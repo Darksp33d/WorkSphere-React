@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
+const API_URL = process.env.REACT_APP_API_URL
+
 const Settings = () => {
   const [apiKeys, setApiKeys] = useState({
     clientId: '',
@@ -23,11 +25,10 @@ const Settings = () => {
 
   const fetchApiKeys = async () => {
     try {
-      const response = await fetch('/api/manage-key/', {
+      const response = await fetch(`${API_URL}/api/manage-key/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
         },
         credentials: 'include',
       });
@@ -48,11 +49,10 @@ const Settings = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/manage-key/', {
+      const response = await fetch(`${API_URL}/api/manage-key/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
         },
         body: JSON.stringify({
           clientId: newClientId,
@@ -73,13 +73,13 @@ const Settings = () => {
     }
   };
 
+
   const handleDelete = async () => {
     try {
-      const response = await fetch('/api/manage-key/', {
+      const response = await fetch(`${API_URL}/api/manage-key/`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
         },
         body: JSON.stringify({ service: 'outlook' }),
         credentials: 'include',
