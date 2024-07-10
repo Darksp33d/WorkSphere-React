@@ -6,6 +6,7 @@ import AuthenticatedLayout from './Components/AuthenticatedLayout';
 import NotificationsHub from './Components/NotificationsHub';
 import DailyBriefing from './Components/DailyBriefing';
 import EmailInterface from './Components/EmailInterface';
+import Settings from './Components/Settings';
 
 const PrivateRoute = ({ children }) => {
   const isAuthenticated = true; // Replace with actual auth check
@@ -21,6 +22,7 @@ const App = () => {
         <Route path="/notifications" element={<PrivateRoute><NotificationsHub /></PrivateRoute>} />
         <Route path ="/daily-briefing" element={<PrivateRoute><DailyBriefing /></PrivateRoute>} />
         <Route path="/email" element={<PrivateRoute><EmailInterface /></PrivateRoute>} />
+        <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
       </Routes>
     </Router>
   );
