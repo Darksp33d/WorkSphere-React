@@ -86,26 +86,25 @@ const EmailInterface = () => {
           'X-CSRFToken': csrfToken,
         },
       });
+      const data = await response.json();
       if (response.ok) {
-        const data = await response.json();
         console.log('Fetched emails:', data);
         if (data.emails && Array.isArray(data.emails)) {
           setEmails(data.emails);
         } else {
           console.error('Unexpected data format:', data);
-          // Handle unexpected data format
+          setError('Unexpected data format received from server');
         }
       } else if (response.status === 401) {
+        console.error('Authentication failed. Redirecting to login.');
         navigate('/');
       } else {
-        console.error('Failed to fetch emails');
-        const errorData = await response.json();
-        console.error('Error details:', errorData);
-        // Display error message to user
+        console.error('Failed to fetch emails:', data.error);
+        setError(`Failed to fetch emails: ${data.error}`);
       }
     } catch (error) {
       console.error('Error fetching emails:', error);
-      // Display error message to user
+      setError('An unexpected error occurred while fetching emails');
     }
   };
 
