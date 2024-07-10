@@ -15,55 +15,81 @@ const Settings = () => {
     fetchApiKeys();
   }, []);
 
+  const getCsrfToken = () => {
+    return document.cookie.split('; ')
+      .find(row => row.startsWith('csrftoken='))
+      ?.split('=')[1];
+  }
+
   const fetchApiKeys = async () => {
-    const response = await fetch('/api/manage-key/', {
-      credentials: 'include',
-    });
-    const data = await response.json();
-    const keysObject = {};
-    data.keys.forEach(key => {
-      keysObject[key.service] = key.key;
-    });
-    setApiKeys({
-      clientId: keysObject.clientId || '',
-      tenantId: keysObject.tenantId || '',
-      clientSecret: keysObject.clientSecret || ''
-    });
+    try {
+      const response = await fetch('/api/manage-key/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch API keys');
+      }
+      const data = await response.json();
+      setApiKeys({
+        clientId: data.keys.client_id || '',
+        tenantId: data.keys.tenant_id || '',
+        clientSecret: data.keys.client_secret || ''
+      });
+    } catch (error) {
+      console.error('Error fetching API keys:', error);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await fetch('/api/manage-key/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        clientId: newClientId,
-        tenantId: newTenantId,
-        clientSecret: newClientSecret
-      }),
-      credentials: 'include',
-    });
-    if (response.ok) {
-      fetchApiKeys();
+    try {
+      const response = await fetch('/api/manage-key/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({
+          clientId: newClientId,
+          tenantId: newTenantId,
+          clientSecret: newClientSecret
+        }),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to save API keys');
+      }
+      await fetchApiKeys();
       setNewClientId('');
       setNewTenantId('');
       setNewClientSecret('');
+    } catch (error) {
+      console.error('Error saving API keys:', error);
     }
   };
 
-  const handleDelete = async (service) => {
-    const response = await fetch('/api/manage-key/', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ service }),
-      credentials: 'include',
-    });
-    if (response.ok) {
-      fetchApiKeys();
+  const handleDelete = async () => {
+    try {
+      const response = await fetch('/api/manage-key/', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({ service: 'outlook' }),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete API keys');
+      }
+      await fetchApiKeys();
+    } catch (error) {
+      console.error('Error deleting API keys:', error);
     }
   };
 
@@ -105,11 +131,11 @@ const Settings = () => {
         </form>
         <div>
           <h3 className="text-xl font-semibold mb-2">Stored API Keys:</h3>
-          <div className="mb-2">Client ID: {apiKeys.clientId.substring(0, 10)}...</div>
-          <div className="mb-2">Tenant ID: {apiKeys.tenantId.substring(0, 10)}...</div>
-          <div className="mb-2">Client Secret: {apiKeys.clientSecret.substring(0, 10)}...</div>
+          <div className="mb-2">Client ID: {apiKeys.clientId ? `${apiKeys.clientId.substring(0, 10)}...` : 'Not set'}</div>
+          <div className="mb-2">Tenant ID: {apiKeys.tenantId ? `${apiKeys.tenantId.substring(0, 10)}...` : 'Not set'}</div>
+          <div className="mb-2">Client Secret: {apiKeys.clientSecret ? `${apiKeys.clientSecret.substring(0, 10)}...` : 'Not set'}</div>
           <button 
-            onClick={() => handleDelete('outlook')}
+            onClick={handleDelete}
             className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
           >
             Delete
