@@ -66,7 +66,9 @@ const ComposeEmail = ({ onClose }) => {
     if (response.ok) {
       onClose();
     } else {
-      // Handle error
+      const errorData = await response.json();
+      console.error('Failed to send email:', errorData.error);
+      // Handle error (e.g., show error message to user)
     }
   };
 
