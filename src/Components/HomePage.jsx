@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Button = ({ children, className, ...props }) => (
   <button
@@ -17,6 +18,37 @@ const Input = ({ className, ...props }) => (
 );
 
 const HomePage = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/login/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Login successful, navigate to dashboard
+        navigate('/dashboard');
+      } else {
+        // Login failed, show error message
+        setError(data.message || 'Login failed');
+      }
+    } catch (error) {
+      setError('An error occurred. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex flex-col items-center justify-center p-4 md:p-8 font-sans">
       <div className="w-full max-w-4xl">
@@ -28,16 +60,29 @@ const HomePage = () => {
         <div className="flex flex-col md:flex-row gap-8">
           <div className="w-full md:w-1/2 bg-white shadow-lg rounded-lg p-6">
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Login to Your Workspace</h2>
-            <form className="space-y-4">
+            {error && <p className="text-red-500 mb-4">{error}</p>}
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <Input id="email" type="email" placeholder="you@example.com" />
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <Input 
+                  id="username" 
+                  type="text" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Your username" 
+                />
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <Input id="password" type="password" placeholder="••••••••" />
+                <Input 
+                  id="password" 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                />
               </div>
-              <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">Login</Button>
+              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">Login</Button>
             </form>
             <div className="mt-4 text-center">
               <Button className="text-indigo-600 hover:text-indigo-800 bg-transparent">Sign Up</Button>
