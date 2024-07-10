@@ -14,7 +14,7 @@ const EmailListItem = ({ email, isSelected, onClick }) => (
       <p className="font-semibold">{email.sender}</p>
       <p className="text-sm text-gray-600 truncate">{email.subject}</p>
     </div>
-    <p className="text-sm text-gray-500">{email.time}</p>
+    <p className="text-sm text-gray-500">{new Date(email.receivedDateTime).toLocaleString()}</p>
   </motion.div>
 );
 
@@ -41,95 +41,95 @@ const EmailPreview = ({ email }) => (
 );
 
 const ComposeEmail = ({ onClose }) => {
-    const [to, setTo] = useState('');
-    const [subject, setSubject] = useState('');
-    const [body, setBody] = useState('');
-  
-    const handleSend = async () => {
-      const response = await fetch('/api/send-email/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ to, subject, body }),
-        credentials: 'include',
-      });
-      if (response.ok) {
-        onClose();
-      } else {
-        // Handle error
-      }
-    };
-  
-    return (
-      <motion.div
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        <motion.div
-          className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl"
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 50, opacity: 0 }}
-        >
-          <h2 className="text-2xl font-bold mb-4">Compose Email</h2>
-          <input
-            type="text"
-            placeholder="To"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="w-full p-2 mb-4 border rounded"
-          />
-          <input
-            type="text"
-            placeholder="Subject"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="w-full p-2 mb-4 border rounded"
-          />
-          <textarea
-            placeholder="Message"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            className="w-full p-2 mb-4 border rounded h-40"
-          ></textarea>
-          <div className="flex justify-end space-x-4">
-            <button
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button 
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-              onClick={handleSend}
-            >
-              Send
-            </button>
-          </div>
-        </motion.div>
-      </motion.div>
-    );
+  const [to, setTo] = useState('');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+
+  const handleSend = async () => {
+    const response = await fetch('/api/send-email/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ to, subject, body }),
+      credentials: 'include',
+    });
+    if (response.ok) {
+      onClose();
+    } else {
+      // Handle error
+    }
   };
-  
-  const EmailInterface = () => {
-    const [emails, setEmails] = useState([]);
-    const [selectedEmail, setSelectedEmail] = useState(null);
-    const [isComposing, setIsComposing] = useState(false);
-  
-    useEffect(() => {
-      fetchEmails();
-    }, []);
-  
-    const fetchEmails = async () => {
-      const response = await fetch('/api/emails/', {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      setEmails(data.emails);
-    };
+
+  return (
+    <motion.div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl"
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 50, opacity: 0 }}
+      >
+        <h2 className="text-2xl font-bold mb-4">Compose Email</h2>
+        <input
+          type="text"
+          placeholder="To"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className="w-full p-2 mb-4 border rounded"
+        />
+        <input
+          type="text"
+          placeholder="Subject"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          className="w-full p-2 mb-4 border rounded"
+        />
+        <textarea
+          placeholder="Message"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          className="w-full p-2 mb-4 border rounded h-40"
+        ></textarea>
+        <div className="flex justify-end space-x-4">
+          <button
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button 
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            onClick={handleSend}
+          >
+            Send
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const EmailInterface = () => {
+  const [emails, setEmails] = useState([]);
+  const [selectedEmail, setSelectedEmail] = useState(null);
+  const [isComposing, setIsComposing] = useState(false);
+
+  useEffect(() => {
+    fetchEmails();
+  }, []);
+
+  const fetchEmails = async () => {
+    const response = await fetch('/api/emails/', {
+      credentials: 'include',
+    });
+    const data = await response.json();
+    setEmails(data.emails);
+  };
 
   return (
     <div className="flex h-full">

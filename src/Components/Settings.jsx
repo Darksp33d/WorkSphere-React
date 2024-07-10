@@ -2,8 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 const Settings = () => {
-  const [apiKeys, setApiKeys] = useState({});
-  const [newKey, setNewKey] = useState('');
+  const [apiKeys, setApiKeys] = useState({
+    clientId: '',
+    tenantId: '',
+    clientSecret: ''
+  });
+  const [newClientId, setNewClientId] = useState('');
+  const [newTenantId, setNewTenantId] = useState('');
+  const [newClientSecret, setNewClientSecret] = useState('');
 
   useEffect(() => {
     fetchApiKeys();
@@ -18,7 +24,11 @@ const Settings = () => {
     data.keys.forEach(key => {
       keysObject[key.service] = key.key;
     });
-    setApiKeys(keysObject);
+    setApiKeys({
+      clientId: keysObject.clientId || '',
+      tenantId: keysObject.tenantId || '',
+      clientSecret: keysObject.clientSecret || ''
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -28,12 +38,18 @@ const Settings = () => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ service: 'outlook', key: newKey }),
+      body: JSON.stringify({
+        clientId: newClientId,
+        tenantId: newTenantId,
+        clientSecret: newClientSecret
+      }),
       credentials: 'include',
     });
     if (response.ok) {
       fetchApiKeys();
-      setNewKey('');
+      setNewClientId('');
+      setNewTenantId('');
+      setNewClientSecret('');
     }
   };
 
@@ -64,28 +80,40 @@ const Settings = () => {
         <form onSubmit={handleSubmit} className="mb-6">
           <input
             type="text"
-            value={newKey}
-            onChange={(e) => setNewKey(e.target.value)}
-            placeholder="Enter Outlook API Key"
+            value={newClientId}
+            onChange={(e) => setNewClientId(e.target.value)}
+            placeholder="Enter Outlook Client ID"
+            className="w-full p-2 border rounded mb-4"
+          />
+          <input
+            type="text"
+            value={newTenantId}
+            onChange={(e) => setNewTenantId(e.target.value)}
+            placeholder="Enter Outlook Tenant ID"
+            className="w-full p-2 border rounded mb-4"
+          />
+          <input
+            type="text"
+            value={newClientSecret}
+            onChange={(e) => setNewClientSecret(e.target.value)}
+            placeholder="Enter Outlook Client Secret"
             className="w-full p-2 border rounded mb-4"
           />
           <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-            Save Outlook API Key
+            Save Outlook API Keys
           </button>
         </form>
         <div>
           <h3 className="text-xl font-semibold mb-2">Stored API Keys:</h3>
-          {Object.entries(apiKeys).map(([service, key]) => (
-            <div key={service} className="flex justify-between items-center mb-2">
-              <span>{service}: {key.substring(0, 10)}...</span>
-              <button 
-                onClick={() => handleDelete(service)}
-                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Delete
-              </button>
-            </div>
-          ))}
+          <div className="mb-2">Client ID: {apiKeys.clientId.substring(0, 10)}...</div>
+          <div className="mb-2">Tenant ID: {apiKeys.tenantId.substring(0, 10)}...</div>
+          <div className="mb-2">Client Secret: {apiKeys.clientSecret.substring(0, 10)}...</div>
+          <button 
+            onClick={() => handleDelete('outlook')}
+            className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </motion.div>
