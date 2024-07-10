@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Star, Trash2, Reply, Forward } from 'lucide-react';
 
+const API_URL = process.env.REACT_APP_API_URL
+
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
     className={`flex items-center p-4 cursor-pointer ${isSelected ? 'bg-indigo-100' : 'hover:bg-gray-100'}`}
@@ -46,7 +48,7 @@ const ComposeEmail = ({ onClose }) => {
   const [body, setBody] = useState('');
 
   const handleSend = async () => {
-    const response = await fetch('/api/send-email/', {
+    const response = await fetch(`${API_URL}/api/send-email/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -124,7 +126,7 @@ const EmailInterface = () => {
   }, []);
 
   const fetchEmails = async () => {
-    const response = await fetch('/api/emails/', {
+    const response = await fetch(`${API_URL}/api/emails/`, {
       credentials: 'include',
     });
     const data = await response.json();
