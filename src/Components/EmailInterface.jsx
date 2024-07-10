@@ -86,9 +86,12 @@ const EmailInterface = () => {
       });
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched emails:', data);
         setEmails(data.emails);
       } else {
         console.error('Failed to fetch emails');
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
       }
     } catch (error) {
       console.error('Error fetching emails:', error);
