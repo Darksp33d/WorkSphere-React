@@ -2,13 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Star, Trash2, Reply, Forward } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_API_URL
-
-const getCsrfToken = () => {
-    return document.cookie.split('; ')
-      .find(row => row.startsWith('csrftoken='))
-      ?.split('=')[1];
-  };
+const API_URL = process.env.REACT_APP_API_URL;
 
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
@@ -48,27 +42,32 @@ const EmailPreview = ({ email }) => (
   </div>
 );
 
-const ComposeEmail = ({ onClose }) => {
+const ComposeEmail = ({ onClose, csrfToken }) => {
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
 
   const handleSend = async () => {
-    const response = await fetch(`${API_URL}/api/send-email/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken(),
-      },
-      body: JSON.stringify({ to, subject, body }),
-      credentials: 'include',
-    });
-    if (response.ok) {
-      onClose();
-    } else {
-      const errorData = await response.json();
-      console.error('Failed to send email:', errorData.error);
-      // Handle error (e.g., show error message to user)
+    try {
+      const response = await fetch(`${API_URL}/api/send-email/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ to, subject, body }),
+        credentials: 'include',
+      });
+      if (response.ok) {
+        onClose();
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to send email:', errorData.error || errorData.detail);
+        // Handle error (e.g., show error message to user)
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      // Handle error
     }
   };
 
@@ -129,17 +128,47 @@ const EmailInterface = () => {
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [isComposing, setIsComposing] = useState(false);
+  const [csrfToken, setCsrfToken] = useState('');
 
   useEffect(() => {
+    fetchCsrfToken();
     fetchEmails();
   }, []);
 
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await fetch(`${API_URL}/get-csrf-token/`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCsrfToken(data.csrfToken);
+        console.log("CSRF Token:", data.csrfToken);
+      } else {
+        console.error('Failed to fetch CSRF token');
+      }
+    } catch (error) {
+      console.error('Error fetching CSRF token:', error);
+    }
+  };
+
   const fetchEmails = async () => {
-    const response = await fetch(`${API_URL}/api/emails/`, {
-      credentials: 'include',
-    });
-    const data = await response.json();
-    setEmails(data.emails);
+    try {
+      const response = await fetch(`${API_URL}/api/emails/`, {
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': csrfToken,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEmails(data.emails);
+      } else {
+        console.error('Failed to fetch emails');
+      }
+    } catch (error) {
+      console.error('Error fetching emails:', error);
+    }
   };
 
   return (
@@ -169,7 +198,7 @@ const EmailInterface = () => {
           <p className="text-center text-gray-500 mt-10">Select an email to view</p>
         )}
       </div>
-      {isComposing && <ComposeEmail onClose={() => setIsComposing(false)} />}
+      {isComposing && <ComposeEmail onClose={() => setIsComposing(false)} csrfToken={csrfToken} />}
     </div>
   );
 };
