@@ -124,24 +124,36 @@ const EmailInterface = () => {
     }
   };
 
+  const initiateAuth = async () => {
+    window.location.href = `${API_URL}/start_auth/`;
+  };
+
   return (
-    <div className="flex h-full">
-      <div className="w-1/3 border-r overflow-y-auto">
-        {emails.map((email) => (
-          <EmailListItem
-            key={email.id}
-            email={email}
-            isSelected={selectedEmail?.id === email.id}
-            onClick={() => setSelectedEmail(email)}
-          />
-        ))}
-      </div>
-      <div className="w-2/3 p-6 overflow-y-auto">
+    <div className="flex flex-col h-full">
+      <button
+        onClick={initiateAuth}
+        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      >
+        Connect to Outlook
+      </button>
+      <div className="flex flex-grow">
+        <div className="w-1/3 border-r overflow-y-auto">
+          {emails.map((email) => (
+            <EmailListItem
+              key={email.id}
+              email={email}
+              isSelected={selectedEmail?.id === email.id}
+              onClick={() => setSelectedEmail(email)}
+            />
+          ))}
+        </div>
+        <div className="w-2/3 p-6 overflow-y-auto">
         {selectedEmail ? (
-          <EmailPreview email={selectedEmail} onMarkAsRead={handleMarkAsRead} />
-        ) : (
-          <p className="text-center text-gray-500 mt-10">Select an email to view</p>
-        )}
+            <EmailPreview email={selectedEmail} onMarkAsRead={handleMarkAsRead} />
+          ) : (
+            <p className="text-center text-gray-500 mt-10">Select an email to view</p>
+          )}
+        </div>
       </div>
     </div>
   );
