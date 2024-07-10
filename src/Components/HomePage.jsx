@@ -24,28 +24,32 @@ const HomePage = () => {
     const navigate = useNavigate();
   
     const handleLogin = async (e) => {
-      e.preventDefault();
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/login/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
-          credentials: 'include',
-        });
-  
-        const data = await response.json();
-  
-        if (response.ok) {
-          navigate('/dashboard');
-        } else {
-          setError(data.message || 'Login failed');
+        e.preventDefault();
+        try {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/login/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              username: username,
+              password: password
+            }),
+            credentials: 'include',
+          });
+      
+          const data = await response.json();
+      
+          if (response.ok) {
+            navigate('/dashboard');
+          } else {
+            setError(data.message || 'Login failed');
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          setError('An error occurred. Please try again.');
         }
-      } catch (error) {
-        setError('An error occurred. Please try again.');
-      }
-    };
+      };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex flex-col items-center justify-center p-4 md:p-8 font-sans">
