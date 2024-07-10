@@ -5,9 +5,15 @@ import { Mail, Edit, Trash2, Reply, Forward, Check, X } from 'lucide-react';
 const API_URL = process.env.REACT_APP_API_URL;
 
 const getCsrfToken = () => {
-  return document.cookie.split('; ')
-    .find(row => row.startsWith('csrftoken='))
-    ?.split('=')[1];
+  const name = 'csrftoken';
+  const cookies = document.cookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    const cookie = cookies[i].trim();
+    if (cookie.startsWith(name + '=')) {
+      return cookie.substring(name.length + 1, cookie.length);
+    }
+  }
+  return null;
 };
 
 const EmailListItem = ({ email, isSelected, onClick }) => (
