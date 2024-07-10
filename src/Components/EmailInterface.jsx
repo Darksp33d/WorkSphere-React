@@ -136,9 +136,12 @@ const EmailInterface = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        window.location.href = data.auth_url;
+        if (data.auth_url) {
+          window.location.href = data.auth_url;
+        } else {
+          console.error('Auth URL not received from the server');
+        }
       } else if (response.status === 401) {
-        // Redirect to login page if not authenticated
         navigate('/');
       } else {
         console.error('Failed to initiate auth');
@@ -147,7 +150,6 @@ const EmailInterface = () => {
       console.error('Error initiating auth:', error);
     }
   };
-
   return (
     <div className="flex flex-col h-full">
       <button
