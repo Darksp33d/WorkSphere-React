@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Star, Trash2, Reply, Forward } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -54,6 +55,7 @@ const EmailInterface = () => {
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [csrfToken, setCsrfToken] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCsrfToken();
@@ -88,6 +90,9 @@ const EmailInterface = () => {
         const data = await response.json();
         console.log('Fetched emails:', data);
         setEmails(data.emails);
+      } else if (response.status === 401) {
+        // Redirect to login page if not authenticated
+        navigate('/');
       } else {
         console.error('Failed to fetch emails');
         const errorData = await response.json();
@@ -125,7 +130,22 @@ const EmailInterface = () => {
   };
 
   const initiateAuth = async () => {
-    window.location.href = `${API_URL}/start_auth/`;
+    try {
+      const response = await fetch(`${API_URL}/start_auth/`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.auth_url;
+      } else if (response.status === 401) {
+        // Redirect to login page if not authenticated
+        navigate('/');
+      } else {
+        console.error('Failed to initiate auth');
+      }
+    } catch (error) {
+      console.error('Error initiating auth:', error);
+    }
   };
 
   return (
