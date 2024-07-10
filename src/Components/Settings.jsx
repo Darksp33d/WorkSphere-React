@@ -21,7 +21,7 @@ const Settings = () => {
     return document.cookie.split('; ')
       .find(row => row.startsWith('csrftoken='))
       ?.split('=')[1];
-  }
+  };
 
   const fetchApiKeys = async () => {
     try {
@@ -29,6 +29,7 @@ const Settings = () => {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
         },
         credentials: 'include',
       });
@@ -53,6 +54,7 @@ const Settings = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
         },
         body: JSON.stringify({
           clientId: newClientId,
@@ -80,6 +82,7 @@ const Settings = () => {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
         },
         body: JSON.stringify({ service: 'outlook' }),
         credentials: 'include',

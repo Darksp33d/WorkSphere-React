@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import HomePage from './Components/HomePage';
 import Dashboard from './Components/Dashboard';
@@ -13,7 +13,24 @@ const PrivateRoute = ({ children }) => {
   return isAuthenticated ? <AuthenticatedLayout>{children}</AuthenticatedLayout> : <Navigate to="/" />;
 };
 
-const App = () => {
+const API_URL = process.env.REACT_APP_API_URL;
+
+function App() {
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await fetch(`${API_URL}/get-csrf-token/`, {
+          credentials: 'include',
+        });
+        const data = await response.json();
+        document.cookie = `csrftoken=${data.csrfToken}; path=/; Secure; SameSite=None`;
+      } catch (error) {
+        console.error('Error fetching CSRF token:', error);
+      }
+    };
+    fetchCsrfToken();
+  }, []);
+  
   return (
     <Router>
       <Routes>
