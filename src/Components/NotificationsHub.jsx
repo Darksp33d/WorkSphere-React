@@ -22,19 +22,34 @@ const NotificationsHub = () => {
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    // TODO: Fetch notifications from API
-    const dummyNotifications = [
-      { id: 1, source: 'Email', message: 'New email from John Doe', time: '5m ago', type: 'email' },
-      { id: 2, source: 'Slack', message: 'Mention in #general channel', time: '10m ago', type: 'message' },
-      { id: 3, source: 'Jira', message: 'Task "Implement login" assigned to you', time: '1h ago', type: 'task' },
-      // ... more dummy notifications
-    ];
-    setNotifications(dummyNotifications);
+    // TODO: Replace with actual API call
+    const fetchNotifications = async () => {
+      // Simulating API call
+      const dummyNotifications = [
+        { id: 1, source: 'Email', message: 'New email from John Doe', time: '5m ago', type: 'email' },
+        { id: 2, source: 'Slack', message: 'Mention in #general channel', time: '10m ago', type: 'message' },
+        { id: 3, source: 'Jira', message: 'Task "Implement login" assigned to you', time: '1h ago', type: 'task' },
+        { id: 4, source: 'Email', message: 'Weekly report due tomorrow', time: '2h ago', type: 'email' },
+        { id: 5, source: 'Teams', message: 'New meeting scheduled: Project Review', time: '3h ago', type: 'message' },
+      ];
+      setNotifications(dummyNotifications);
+    };
+
+    fetchNotifications();
   }, []);
 
   const filteredNotifications = notifications.filter(notification => 
     filter === 'all' || notification.type === filter
   );
+
+  const getIcon = (type) => {
+    switch(type) {
+      case 'email': return Mail;
+      case 'message': return MessageSquare;
+      case 'task': return CheckSquare;
+      default: return Bell;
+    }
+  };
 
   return (
     <div className="p-8">
@@ -48,7 +63,7 @@ const NotificationsHub = () => {
       {filteredNotifications.map(notification => (
         <NotificationItem 
           key={notification.id}
-          icon={notification.type === 'email' ? Mail : notification.type === 'message' ? MessageSquare : CheckSquare}
+          icon={getIcon(notification.type)}
           source={notification.source}
           message={notification.message}
           time={notification.time}

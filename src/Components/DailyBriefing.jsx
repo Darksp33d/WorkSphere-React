@@ -6,22 +6,27 @@ const DailyBriefing = () => {
   const [briefing, setBriefing] = useState(null);
 
   useEffect(() => {
-    // TODO: Fetch daily briefing from AI service
-    const dummyBriefing = {
-      date: new Date().toLocaleDateString(),
-      summary: "Today you have 3 important emails, 2 upcoming meetings, and 5 tasks due.",
-      topPriorities: [
-        "Respond to client proposal by 2 PM",
-        "Prepare for team meeting at 4 PM",
-        "Review and approve Q2 report"
-      ],
-      upcomingEvents: [
-        { time: "11:00 AM", title: "Call with Marketing Team" },
-        { time: "2:00 PM", title: "Client Proposal Deadline" },
-        { time: "4:00 PM", title: "Weekly Team Meeting" }
-      ]
+    // TODO: Replace with actual API call
+    const fetchDailyBriefing = async () => {
+      // Simulating API call
+      const dummyBriefing = {
+        date: new Date().toLocaleDateString(),
+        summary: "Today you have 3 important emails, 2 upcoming meetings, and 5 tasks due.",
+        topPriorities: [
+          "Respond to client proposal by 2 PM",
+          "Prepare for team meeting at 4 PM",
+          "Review and approve Q2 report"
+        ],
+        upcomingEvents: [
+          { time: "11:00 AM", title: "Call with Marketing Team" },
+          { time: "2:00 PM", title: "Client Proposal Deadline" },
+          { time: "4:00 PM", title: "Weekly Team Meeting" }
+        ]
+      };
+      setBriefing(dummyBriefing);
     };
-    setBriefing(dummyBriefing);
+
+    fetchDailyBriefing();
   }, []);
 
   if (!briefing) return <div>Loading briefing...</div>;
