@@ -21,7 +21,7 @@ const HomePage = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const navigate = useNavigate ? useNavigate() : null;
+    const navigate = useNavigate();
   
     const handleLogin = async (e) => {
       e.preventDefault();
@@ -38,13 +38,7 @@ const HomePage = () => {
         const data = await response.json();
   
         if (response.ok) {
-          if (navigate) {
-            navigate('/dashboard');
-          } else {
-            console.log('Login successful, but navigation is not available.');
-            // You might want to handle this case differently, perhaps by setting some state
-            // to indicate successful login or by refreshing the page
-          }
+          navigate('/dashboard');
         } else {
           setError(data.message || 'Login failed');
         }
