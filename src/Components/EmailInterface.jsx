@@ -13,8 +13,8 @@ const EmailListItem = ({ email, isSelected, onClick }) => (
   >
     <Mail size={20} className={`mr-4 ${email.isRead ? 'text-gray-500' : 'text-blue-500'}`} />
     <div className="flex-grow">
-      <p className="font-semibold">{email.sender.emailAddress.name}</p>
-      <p className="text-sm text-gray-600 truncate">{email.subject}</p>
+      <p className="font-semibold">{email.from?.emailAddress?.name || 'Unknown Sender'}</p>
+      <p className="text-sm text-gray-600 truncate">{email.subject || '(No subject)'}</p>
     </div>
     <p className="text-sm text-gray-500">{new Date(email.receivedDateTime).toLocaleString()}</p>
   </motion.div>
@@ -22,11 +22,11 @@ const EmailListItem = ({ email, isSelected, onClick }) => (
 
 const EmailPreview = ({ email }) => (
   <div className="bg-white p-6 rounded-lg shadow-lg">
-    <h2 className="text-2xl font-bold mb-4">{email.subject}</h2>
-    <p className="text-gray-600 mb-2">From: {email.sender.emailAddress.name} ({email.sender.emailAddress.address})</p>
+    <h2 className="text-2xl font-bold mb-4">{email.subject || '(No subject)'}</h2>
+    <p className="text-gray-600 mb-2">From: {email.from?.emailAddress?.name || 'Unknown'} ({email.from?.emailAddress?.address})</p>
     <p className="text-gray-600 mb-4">To: {email.toRecipients.map(r => r.emailAddress.address).join(', ')}</p>
     <div className="border-t border-b py-4 mb-4">
-      <p dangerouslySetInnerHTML={{ __html: email.body.content }}></p>
+      <div dangerouslySetInnerHTML={{ __html: email.body?.content || '' }}></div>
     </div>
     <div className="flex space-x-4">
       <button className="flex items-center text-indigo-600 hover:text-indigo-800">
@@ -46,6 +46,7 @@ const EmailInterface = () => {
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     checkConnection();
@@ -59,13 +60,22 @@ const EmailInterface = () => {
       if (response.ok) {
         setIsConnected(true);
         const data = await response.json();
-        setEmails(data.emails);
+        console.log('Fetched emails:', data);
+        if (data.emails && Array.isArray(data.emails)) {
+          setEmails(data.emails);
+        } else {
+          setError('Unexpected data format received from the server');
+        }
       } else if (response.status === 401) {
         setIsConnected(false);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'An unknown error occurred');
       }
     } catch (error) {
       console.error('Error checking connection:', error);
       setIsConnected(false);
+      setError('Failed to connect to the server');
     }
   };
 
@@ -78,12 +88,28 @@ const EmailInterface = () => {
         const data = await response.json();
         window.location.href = data.auth_url;
       } else {
-        console.error('Failed to initiate auth');
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to initiate authentication');
       }
     } catch (error) {
       console.error('Error initiating auth:', error);
+      setError('Failed to connect to the server');
     }
   };
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={() => { setError(null); checkConnection(); }}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
