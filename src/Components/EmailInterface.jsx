@@ -4,6 +4,12 @@ import { Mail, Star, Trash2, Reply, Forward } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_API_URL
 
+const getCsrfToken = () => {
+    return document.cookie.split('; ')
+      .find(row => row.startsWith('csrftoken='))
+      ?.split('=')[1];
+  };
+
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
     className={`flex items-center p-4 cursor-pointer ${isSelected ? 'bg-indigo-100' : 'hover:bg-gray-100'}`}
@@ -52,6 +58,7 @@ const ComposeEmail = ({ onClose }) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
       },
       body: JSON.stringify({ to, subject, body }),
       credentials: 'include',
