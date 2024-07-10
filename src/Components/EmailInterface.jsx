@@ -104,6 +104,7 @@ const EmailInterface = () => {
 
   const checkConnection = async () => {
     try {
+      console.log('Checking connection to the email server...');
       const response = await fetch(`${API_URL}/api/emails/`, {
         credentials: 'include',
         headers: {
@@ -111,17 +112,21 @@ const EmailInterface = () => {
         },
       });
       if (response.ok) {
+        console.log('Successfully connected to the email server.');
         setIsConnected(true);
         const data = await response.json();
         if (data.emails && Array.isArray(data.emails)) {
           setEmails(data.emails);
         } else {
+          console.error('Unexpected data format received from the server');
           setError('Unexpected data format received from the server');
         }
       } else if (response.status === 401) {
+        console.warn('User is not authenticated.');
         setIsConnected(false);
       } else {
         const errorData = await response.json();
+        console.error(`Failed to connect: ${errorData.error || 'An unknown error occurred'}`);
         setError(errorData.error || 'An unknown error occurred');
       }
     } catch (error) {
@@ -133,6 +138,7 @@ const EmailInterface = () => {
 
   const handleConnect = async () => {
     try {
+      console.log('Initiating Outlook authentication...');
       const response = await fetch(`${API_URL}/api/outlook/auth/`, {
         credentials: 'include',
         headers: {
@@ -141,9 +147,11 @@ const EmailInterface = () => {
       });
       if (response.ok) {
         const data = await response.json();
+        console.log('Redirecting to Outlook authentication URL...');
         window.location.href = data.auth_url;
       } else {
         const errorData = await response.json();
+        console.error(`Failed to initiate authentication: ${errorData.error}`);
         setError(errorData.error || 'Failed to initiate authentication');
       }
     } catch (error) {
@@ -154,6 +162,7 @@ const EmailInterface = () => {
 
   const handleSendEmail = async (emailData) => {
     try {
+      console.log('Sending email...');
       const response = await fetch(`${API_URL}/api/send-email/`, {
         method: 'POST',
         credentials: 'include',
@@ -164,10 +173,12 @@ const EmailInterface = () => {
         body: JSON.stringify(emailData),
       });
       if (response.ok) {
+        console.log('Email sent successfully.');
         setIsComposing(false);
         checkConnection(); // Refresh the email list
       } else {
         const errorData = await response.json();
+        console.error(`Failed to send email: ${errorData.error}`);
         setError(errorData.error || 'Failed to send email');
       }
     } catch (error) {
@@ -178,6 +189,7 @@ const EmailInterface = () => {
 
   const handleDeleteEmail = async (emailId) => {
     try {
+      console.log(`Deleting email with ID: ${emailId}`);
       const response = await fetch(`${API_URL}/api/delete-email/`, {
         method: 'POST',
         credentials: 'include',
@@ -188,10 +200,12 @@ const EmailInterface = () => {
         body: JSON.stringify({ email_id: emailId }),
       });
       if (response.ok) {
+        console.log('Email deleted successfully.');
         setEmails(emails.filter(email => email.id !== emailId));
         setSelectedEmail(null);
       } else {
         const errorData = await response.json();
+        console.error(`Failed to delete email: ${errorData.error}`);
         setError(errorData.error || 'Failed to delete email');
       }
     } catch (error) {
@@ -202,6 +216,7 @@ const EmailInterface = () => {
 
   const handleMarkRead = async (emailId, isRead) => {
     try {
+      console.log(`Marking email with ID: ${emailId} as ${isRead ? 'read' : 'unread'}`);
       const response = await fetch(`${API_URL}/api/mark-email-read/`, {
         method: 'POST',
         credentials: 'include',
@@ -212,6 +227,7 @@ const EmailInterface = () => {
         body: JSON.stringify({ email_id: emailId, is_read: isRead }),
       });
       if (response.ok) {
+        console.log('Email marked as read/unread successfully.');
         setEmails(emails.map(email => 
           email.id === emailId ? { ...email, isRead: isRead } : email
         ));
@@ -220,6 +236,7 @@ const EmailInterface = () => {
         }
       } else {
         const errorData = await response.json();
+        console.error(`Failed to mark email as read/unread: ${errorData.error}`);
         setError(errorData.error || 'Failed to mark email as read/unread');
       }
     } catch (error) {
