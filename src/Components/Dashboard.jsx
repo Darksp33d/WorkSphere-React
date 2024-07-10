@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Users, BarChart, Clock } from 'lucide-react';
+import NotificationsHub from './NotificationsHub';
+import DailyBriefing from './DailyBriefing';
 
 const Card = ({ title, value, icon: Icon, color }) => (
   <motion.div 
@@ -29,34 +31,21 @@ const Dashboard = () => {
       >
         Welcome back, User!
       </motion.h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card title="Notifications" value="5" icon={Bell} color="bg-blue-100" />
-        <Card title="Team Members" value="12" icon={Users} color="bg-green-100" />
-        <Card title="Projects" value="7" icon={BarChart} color="bg-yellow-100" />
-        <Card title="Hours Logged" value="128" icon={Clock} color="bg-purple-100" />
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <Card title="Notifications" value="5" icon={Bell} color="bg-blue-100" />
+            <Card title="Team Members" value="12" icon={Users} color="bg-green-100" />
+            <Card title="Projects" value="7" icon={BarChart} color="bg-yellow-100" />
+            <Card title="Hours Logged" value="128" icon={Clock} color="bg-purple-100" />
+          </div>
+          <NotificationsHub />
+        </div>
+        <div>
+          <DailyBriefing />
+        </div>
       </div>
-      <motion.div 
-        className="mt-12 bg-white p-6 rounded-lg shadow-lg"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">Recent Activity</h2>
-        <ul className="space-y-4">
-          <li className="flex items-center text-gray-700">
-            <span className="w-32 text-gray-500">2 hours ago</span>
-            <span>You completed the "Q2 Report" task</span>
-          </li>
-          <li className="flex items-center text-gray-700">
-            <span className="w-32 text-gray-500">Yesterday</span>
-            <span>Team meeting for "Project X" scheduled</span>
-          </li>
-          <li className="flex items-center text-gray-700">
-            <span className="w-32 text-gray-500">2 days ago</span>
-            <span>New team member John Doe joined</span>
-          </li>
-        </ul>
-      </motion.div>
     </div>
   );
 };

@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import HomePage from './Components/HomePage';
 import Dashboard from './Components/Dashboard';
 import AuthenticatedLayout from './Components/AuthenticatedLayout';
+import NotificationsHub from './Components/NotificationsHub';
+import DailyBriefing from './Components/DailyBriefing';
 
 const PrivateRoute = ({ children }) => {
   const isAuthenticated = true; // Replace with actual auth check
@@ -15,7 +17,8 @@ const App = () => {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        {/* Add other authenticated routes here */}
+        <Route path="/notifications" element={<PrivateRoute><NotificationsHub /></PrivateRoute>} />
+        <Route path ="/daily-briefing" element={<PrivateRoute><DailyBriefing /></PrivateRoute>} />
       </Routes>
     </Router>
   );
