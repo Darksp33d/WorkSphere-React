@@ -18,36 +18,40 @@ const Input = ({ className, ...props }) => (
 );
 
 const HomePage = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/login/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Login successful, navigate to dashboard
-        navigate('/dashboard');
-      } else {
-        // Login failed, show error message
-        setError(data.message || 'Login failed');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const navigate = useNavigate ? useNavigate() : null;
+  
+    const handleLogin = async (e) => {
+      e.preventDefault();
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/login/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
+          credentials: 'include',
+        });
+  
+        const data = await response.json();
+  
+        if (response.ok) {
+          if (navigate) {
+            navigate('/dashboard');
+          } else {
+            console.log('Login successful, but navigation is not available.');
+            // You might want to handle this case differently, perhaps by setting some state
+            // to indicate successful login or by refreshing the page
+          }
+        } else {
+          setError(data.message || 'Login failed');
+        }
+      } catch (error) {
+        setError('An error occurred. Please try again.');
       }
-    } catch (error) {
-      setError('An error occurred. Please try again.');
-    }
-  };
+    };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex flex-col items-center justify-center p-4 md:p-8 font-sans">
