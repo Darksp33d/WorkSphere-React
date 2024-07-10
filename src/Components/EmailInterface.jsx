@@ -6,12 +6,12 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
-    className={`flex items-center p-4 cursor-pointer ${isSelected ? 'bg-indigo-100' : 'hover:bg-gray-100'}`}
+    className={`flex items-center p-4 cursor-pointer ${isSelected ? 'bg-indigo-100' : 'hover:bg-gray-100'} ${email.isRead ? '' : 'font-bold'}`}
     onClick={onClick}
     whileHover={{ scale: 1.02 }}
     transition={{ type: "spring", stiffness: 400, damping: 10 }}
   >
-    <Mail size={20} className="text-gray-500 mr-4" />
+    <Mail size={20} className={`mr-4 ${email.isRead ? 'text-gray-500' : 'text-blue-500'}`} />
     <div className="flex-grow">
       <p className="font-semibold">{email.sender}</p>
       <p className="text-sm text-gray-600 truncate">{email.subject}</p>
@@ -20,13 +20,13 @@ const EmailListItem = ({ email, isSelected, onClick }) => (
   </motion.div>
 );
 
-const EmailPreview = ({ email }) => (
+const EmailPreview = ({ email, onMarkAsRead }) => (
   <div className="bg-white p-6 rounded-lg shadow-lg">
     <h2 className="text-2xl font-bold mb-4">{email.subject}</h2>
     <p className="text-gray-600 mb-2">From: {email.sender}</p>
     <p className="text-gray-600 mb-4">To: me</p>
     <div className="border-t border-b py-4 mb-4">
-      <p>{email.body}</p>
+      <p dangerouslySetInnerHTML={{ __html: email.body }}></p>
     </div>
     <div className="flex space-x-4">
       <button className="flex items-center text-indigo-600 hover:text-indigo-800">
@@ -38,96 +38,21 @@ const EmailPreview = ({ email }) => (
       <button className="flex items-center text-red-600 hover:text-red-800">
         <Trash2 size={20} className="mr-2" /> Delete
       </button>
+      {!email.isRead && (
+        <button
+          className="flex items-center text-green-600 hover:text-green-800"
+          onClick={() => onMarkAsRead(email.id)}
+        >
+          Mark as Read
+        </button>
+      )}
     </div>
   </div>
 );
 
-const ComposeEmail = ({ onClose, csrfToken }) => {
-  const [to, setTo] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-
-  const handleSend = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/send-email/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-        },
-        body: JSON.stringify({ to, subject, body }),
-        credentials: 'include',
-      });
-      if (response.ok) {
-        onClose();
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to send email:', errorData.error || errorData.detail);
-        // Handle error (e.g., show error message to user)
-      }
-    } catch (error) {
-      console.error('Error sending email:', error);
-      // Handle error
-    }
-  };
-
-  return (
-    <motion.div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <motion.div
-        className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl"
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 50, opacity: 0 }}
-      >
-        <h2 className="text-2xl font-bold mb-4">Compose Email</h2>
-        <input
-          type="text"
-          placeholder="To"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="w-full p-2 mb-4 border rounded"
-        />
-        <input
-          type="text"
-          placeholder="Subject"
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          className="w-full p-2 mb-4 border rounded"
-        />
-        <textarea
-          placeholder="Message"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          className="w-full p-2 mb-4 border rounded h-40"
-        ></textarea>
-        <div className="flex justify-end space-x-4">
-          <button
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button 
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-            onClick={handleSend}
-          >
-            Send
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
 const EmailInterface = () => {
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
-  const [isComposing, setIsComposing] = useState(false);
   const [csrfToken, setCsrfToken] = useState('');
 
   useEffect(() => {
@@ -143,7 +68,6 @@ const EmailInterface = () => {
       if (response.ok) {
         const data = await response.json();
         setCsrfToken(data.csrfToken);
-        console.log("CSRF Token:", data.csrfToken);
       } else {
         console.error('Failed to fetch CSRF token');
       }
@@ -171,17 +95,35 @@ const EmailInterface = () => {
     }
   };
 
+  const handleMarkAsRead = async (emailId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/mark-as-read/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ emailId }),
+      });
+      if (response.ok) {
+        setEmails(emails.map(email => 
+          email.id === emailId ? { ...email, isRead: true } : email
+        ));
+        if (selectedEmail && selectedEmail.id === emailId) {
+          setSelectedEmail({ ...selectedEmail, isRead: true });
+        }
+      } else {
+        console.error('Failed to mark email as read');
+      }
+    } catch (error) {
+      console.error('Error marking email as read:', error);
+    }
+  };
+
   return (
     <div className="flex h-full">
       <div className="w-1/3 border-r overflow-y-auto">
-        <div className="p-4 border-b">
-          <button
-            className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-            onClick={() => setIsComposing(true)}
-          >
-            Compose
-          </button>
-        </div>
         {emails.map((email) => (
           <EmailListItem
             key={email.id}
@@ -193,12 +135,11 @@ const EmailInterface = () => {
       </div>
       <div className="w-2/3 p-6 overflow-y-auto">
         {selectedEmail ? (
-          <EmailPreview email={selectedEmail} />
+          <EmailPreview email={selectedEmail} onMarkAsRead={handleMarkAsRead} />
         ) : (
           <p className="text-center text-gray-500 mt-10">Select an email to view</p>
         )}
       </div>
-      {isComposing && <ComposeEmail onClose={() => setIsComposing(false)} csrfToken={csrfToken} />}
     </div>
   );
 };
