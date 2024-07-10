@@ -1,46 +1,51 @@
-// EmailInterface.jsx
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Star, Trash2, Reply, Forward, Edit, Send } from 'lucide-react';
+import { Mail, Edit, Trash2, Reply, Forward, Check, X } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
+const getCsrfToken = () => {
+  return document.cookie.split('; ')
+    .find(row => row.startsWith('csrftoken='))
+    ?.split('=')[1];
+};
+
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
-    className={`flex items-center p-4 cursor-pointer ${isSelected ? 'bg-indigo-100' : 'hover:bg-gray-100'} ${email.isRead ? '' : 'font-bold'}`}
+    className={`flex items-center p-4 cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'} ${email.isRead ? 'text-gray-600' : 'font-semibold text-gray-900'}`}
     onClick={onClick}
-    whileHover={{ scale: 1.02 }}
+    whileHover={{ scale: 1.01 }}
     transition={{ type: "spring", stiffness: 400, damping: 10 }}
   >
-    <Mail size={20} className={`mr-4 ${email.isRead ? 'text-gray-500' : 'text-blue-500'}`} />
+    <Mail size={18} className={`mr-4 ${email.isRead ? 'text-gray-400' : 'text-blue-500'}`} />
     <div className="flex-grow">
-      <p className="font-semibold">{email.from?.emailAddress?.name || 'Unknown Sender'}</p>
-      <p className="text-sm text-gray-600 truncate">{email.subject || '(No subject)'}</p>
+      <p className="text-sm">{email.from?.emailAddress?.name || 'Unknown Sender'}</p>
+      <p className="text-xs text-gray-500 truncate">{email.subject || '(No subject)'}</p>
     </div>
-    <p className="text-sm text-gray-500">{new Date(email.receivedDateTime).toLocaleString()}</p>
+    <p className="text-xs text-gray-400">{new Date(email.receivedDateTime).toLocaleString()}</p>
   </motion.div>
 );
 
 const EmailPreview = ({ email, onReply, onForward, onDelete, onMarkRead }) => (
-  <div className="bg-white p-6 rounded-lg shadow-lg">
-    <h2 className="text-2xl font-bold mb-4">{email.subject || '(No subject)'}</h2>
-    <p className="text-gray-600 mb-2">From: {email.from?.emailAddress?.name || 'Unknown'} ({email.from?.emailAddress?.address})</p>
-    <p className="text-gray-600 mb-4">To: {email.toRecipients.map(r => r.emailAddress.address).join(', ')}</p>
+  <div className="bg-white p-6 rounded-lg shadow">
+    <h2 className="text-xl font-semibold mb-4">{email.subject || '(No subject)'}</h2>
+    <p className="text-sm text-gray-600 mb-2">From: {email.from?.emailAddress?.name || 'Unknown'} ({email.from?.emailAddress?.address})</p>
+    <p className="text-sm text-gray-600 mb-4">To: {email.toRecipients.map(r => r.emailAddress.address).join(', ')}</p>
     <div className="border-t border-b py-4 mb-4">
-      <div dangerouslySetInnerHTML={{ __html: email.body?.content || '' }}></div>
+      <div dangerouslySetInnerHTML={{ __html: email.body?.content || '' }} className="text-sm" />
     </div>
     <div className="flex space-x-4">
-      <button onClick={() => onReply(email)} className="flex items-center text-indigo-600 hover:text-indigo-800">
-        <Reply size={20} className="mr-2" /> Reply
+      <button onClick={() => onReply(email)} className="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+        <Reply size={16} className="mr-1" /> Reply
       </button>
-      <button onClick={() => onForward(email)} className="flex items-center text-indigo-600 hover:text-indigo-800">
-        <Forward size={20} className="mr-2" /> Forward
+      <button onClick={() => onForward(email)} className="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+        <Forward size={16} className="mr-1" /> Forward
       </button>
-      <button onClick={() => onDelete(email.id)} className="flex items-center text-red-600 hover:text-red-800">
-        <Trash2 size={20} className="mr-2" /> Delete
+      <button onClick={() => onDelete(email.id)} className="text-red-600 hover:text-red-800 text-sm flex items-center">
+        <Trash2 size={16} className="mr-1" /> Delete
       </button>
-      <button onClick={() => onMarkRead(email.id, !email.isRead)} className="flex items-center text-green-600 hover:text-green-800">
+      <button onClick={() => onMarkRead(email.id, !email.isRead)} className="text-green-600 hover:text-green-800 text-sm flex items-center">
+        {email.isRead ? <X size={16} className="mr-1" /> : <Check size={16} className="mr-1" />}
         {email.isRead ? 'Mark as Unread' : 'Mark as Read'}
       </button>
     </div>
@@ -57,30 +62,30 @@ const ComposeEmail = ({ onSend, onCancel }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg">
+    <div className="bg-white p-6 rounded-lg shadow">
       <input
         type="text"
         placeholder="To"
         value={to}
         onChange={(e) => setTo(e.target.value)}
-        className="w-full mb-4 p-2 border rounded"
+        className="w-full mb-4 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <input
         type="text"
         placeholder="Subject"
         value={subject}
         onChange={(e) => setSubject(e.target.value)}
-        className="w-full mb-4 p-2 border rounded"
+        className="w-full mb-4 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <textarea
         placeholder="Body"
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        className="w-full mb-4 p-2 border rounded h-40"
+        className="w-full mb-4 p-2 border border-gray-300 rounded h-40 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <div className="flex justify-end space-x-4">
-        <button onClick={onCancel} className="px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
-        <button onClick={handleSend} className="px-4 py-2 bg-blue-500 text-white rounded">Send</button>
+        <button onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors">Cancel</button>
+        <button onClick={handleSend} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">Send</button>
       </div>
     </div>
   );
@@ -101,6 +106,9 @@ const EmailInterface = () => {
     try {
       const response = await fetch(`${API_URL}/api/emails/`, {
         credentials: 'include',
+        headers: {
+          'X-CSRFToken': getCsrfToken(),
+        },
       });
       if (response.ok) {
         setIsConnected(true);
@@ -127,6 +135,9 @@ const EmailInterface = () => {
     try {
       const response = await fetch(`${API_URL}/api/outlook/auth/`, {
         credentials: 'include',
+        headers: {
+          'X-CSRFToken': getCsrfToken(),
+        },
       });
       if (response.ok) {
         const data = await response.json();
@@ -148,6 +159,7 @@ const EmailInterface = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
         },
         body: JSON.stringify(emailData),
       });
@@ -171,6 +183,7 @@ const EmailInterface = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
         },
         body: JSON.stringify({ email_id: emailId }),
       });
@@ -194,6 +207,7 @@ const EmailInterface = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
         },
         body: JSON.stringify({ email_id: emailId, is_read: isRead }),
       });
@@ -216,11 +230,11 @@ const EmailInterface = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
+      <div className="flex flex-col items-center justify-center h-full bg-gray-100">
         <p className="text-red-500 mb-4">{error}</p>
         <button
           onClick={() => { setError(null); checkConnection(); }}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
         >
           Try Again
         </button>
@@ -229,67 +243,69 @@ const EmailInterface = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-gray-100">
       {!isConnected && (
-        <button
-          onClick={handleConnect}
-          className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Connect to Outlook
-        </button>
+        <div className="flex items-center justify-center h-full">
+          <button
+            onClick={handleConnect}
+            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-lg font-semibold shadow-lg"
+          >
+            Connect to Outlook
+          </button>
+        </div>
       )}
-{isConnected && (
-    <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center p-4 bg-gray-100">
-        <h1 className="text-2xl font-bold">Email Interface</h1>
-        <button
-          onClick={() => setIsComposing(true)}
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-        >
-          <Edit size={20} className="inline mr-2" />
-          Compose
-        </button>
-      </div>
-      <div className="flex flex-grow overflow-hidden">
-        <div className="w-1/3 border-r overflow-y-auto">
-          {emails.map((email) => (
-            <EmailListItem
-              key={email.id}
-              email={email}
-              isSelected={selectedEmail?.id === email.id}
-              onClick={() => setSelectedEmail(email)}
-            />
-          ))}
+      {isConnected && (
+        <div className="flex flex-col h-full">
+          <div className="flex justify-between items-center p-4 bg-white shadow-sm">
+            <h1 className="text-2xl font-bold text-gray-800">Email Interface</h1>
+            <button
+              onClick={() => setIsComposing(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center"
+            >
+              <Edit size={18} className="mr-2" />
+              Compose
+            </button>
+          </div>
+          <div className="flex flex-grow overflow-hidden">
+            <div className="w-1/3 border-r border-gray-200 overflow-y-auto bg-white">
+              {emails.map((email) => (
+                <EmailListItem
+                  key={email.id}
+                  email={email}
+                  isSelected={selectedEmail?.id === email.id}
+                  onClick={() => setSelectedEmail(email)}
+                />
+              ))}
+            </div>
+            <div className="w-2/3 p-6 overflow-y-auto">
+              {isComposing ? (
+                <ComposeEmail
+                  onSend={handleSendEmail}
+                  onCancel={() => setIsComposing(false)}
+                />
+              ) : selectedEmail ? (
+                <EmailPreview
+                  email={selectedEmail}
+                  onReply={(email) => {
+                    setIsComposing(true);
+                    // Pre-fill reply details
+                  }}
+                  onForward={(email) => {
+                    setIsComposing(true);
+                    // Pre-fill forward details
+                  }}
+                  onDelete={handleDeleteEmail}
+                  onMarkRead={handleMarkRead}
+                />
+              ) : (
+                <p className="text-center text-gray-500 mt-10">Select an email to view or compose a new one</p>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="w-2/3 p-6 overflow-y-auto">
-          {isComposing ? (
-            <ComposeEmail
-              onSend={handleSendEmail}
-              onCancel={() => setIsComposing(false)}
-            />
-          ) : selectedEmail ? (
-            <EmailPreview
-              email={selectedEmail}
-              onReply={(email) => {
-                setIsComposing(true);
-                // Pre-fill reply details
-              }}
-              onForward={(email) => {
-                setIsComposing(true);
-                // Pre-fill forward details
-              }}
-              onDelete={handleDeleteEmail}
-              onMarkRead={handleMarkRead}
-            />
-          ) : (
-            <p className="text-center text-gray-500 mt-10">Select an email to view or compose a new one</p>
-          )}
-        </div>
-      </div>
+      )}
     </div>
-  )}
-</div>
-);
+  );
 };
 
 export default EmailInterface;
