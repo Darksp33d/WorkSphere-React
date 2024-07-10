@@ -89,17 +89,23 @@ const EmailInterface = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Fetched emails:', data);
-        setEmails(data.emails);
+        if (data.emails && Array.isArray(data.emails)) {
+          setEmails(data.emails);
+        } else {
+          console.error('Unexpected data format:', data);
+          // Handle unexpected data format
+        }
       } else if (response.status === 401) {
-        // Redirect to login page if not authenticated
         navigate('/');
       } else {
         console.error('Failed to fetch emails');
         const errorData = await response.json();
         console.error('Error details:', errorData);
+        // Display error message to user
       }
     } catch (error) {
       console.error('Error fetching emails:', error);
+      // Display error message to user
     }
   };
 
