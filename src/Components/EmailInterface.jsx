@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -50,10 +51,20 @@ const EmailInterface = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
   const [showSidebar, setShowSidebar] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
     checkConnection();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.selectedEmailId) {
+      const email = emails.find(e => e.email_id === location.state.selectedEmailId);
+      if (email) {
+        handleEmailClick(email);
+      }
+    }
+  }, [emails, location.state]);
 
   const checkConnection = async () => {
     try {

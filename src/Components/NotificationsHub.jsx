@@ -32,26 +32,24 @@ const NotificationsHub = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/emails/`, {
+        const response = await fetch(`${API_URL}/api/unread-emails/`, {
           credentials: 'include',
         });
         if (response.ok) {
           const data = await response.json();
-          const unreadEmails = data.emails
-            .filter(email => !email.is_read)
-            .map(email => ({
-              id: email.email_id,
-              source: 'Email',
-              message: `New email from ${email.sender || 'Unknown'}: ${email.subject}`,
-              time: new Date(email.received_date_time).toLocaleString(),
-              type: 'email'
-            }));
+          const unreadEmails = data.emails.map(email => ({
+            id: email.email_id,
+            source: 'Email',
+            message: `New email from ${email.sender || 'Unknown'}: ${email.subject}`,
+            time: new Date(email.received_date_time).toLocaleString(),
+            type: 'email'
+          }));
           setNotifications(unreadEmails);
         } else {
-          console.error('Failed to fetch emails');
+          console.error('Failed to fetch unread emails');
         }
       } catch (error) {
-        console.error('Error fetching emails:', error);
+        console.error('Error fetching unread emails:', error);
       }
     };
 

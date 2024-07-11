@@ -53,18 +53,17 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchEmails = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/emails/`, {
+        const response = await fetch(`${API_URL}/api/unread-emails/`, {
           credentials: 'include',
         });
         if (response.ok) {
           const data = await response.json();
-          const unread = data.emails.filter(email => !email.is_read).slice(0, 3);
-          setUnreadEmails(unread);
+          setUnreadEmails(data.emails.slice(0, 3));
         } else {
-          console.error('Failed to fetch emails');
+          console.error('Failed to fetch unread emails');
         }
       } catch (error) {
-        console.error('Error fetching emails:', error);
+        console.error('Error fetching unread emails:', error);
       }
     };
 
