@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail } from 'lucide-react';
+import { Mail, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -11,15 +11,15 @@ const getCsrfToken = () => {
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
     className={`flex items-center p-4 cursor-pointer ${
-      isSelected ? 'bg-blue-50' : email.is_read ? 'bg-white' : 'bg-purple-100'
-    } ${email.is_read ? 'text-gray-600' : 'font-semibold text-gray-900'}`}
+      isSelected ? 'bg-purple-50' : email.is_read ? 'bg-white' : 'bg-purple-100'
+    } ${email.is_read ? 'text-gray-600' : 'font-semibold text-gray-900'} border-b border-gray-200`}
     onClick={onClick}
     whileHover={{ scale: 1.01 }}
     transition={{ type: "spring", stiffness: 400, damping: 10 }}
   >
     <Mail size={18} className={`mr-4 ${email.is_read ? 'text-gray-400' : 'text-purple-600'}`} />
     <div className="flex-grow">
-      <p className="text-sm">{email.sender || 'Unknown Sender'}</p>
+      <p className="text-sm truncate">{email.sender || 'Unknown Sender'}</p>
       <p className="text-xs text-gray-500 truncate">{email.subject || '(No subject)'}</p>
     </div>
     <div className="flex items-center">
@@ -31,14 +31,13 @@ const EmailListItem = ({ email, isSelected, onClick }) => (
   </motion.div>
 );
 
-
 const EmailPreview = ({ email }) => (
-  <div className="bg-white p-6 rounded-lg shadow">
-    <h2 className="text-xl font-semibold mb-4">{email.subject || '(No subject)'}</h2>
-    <p className="text-sm text-gray-600 mb-2">From: {email.from?.emailAddress?.name || 'Unknown'} ({email.from?.emailAddress?.address})</p>
-    <p className="text-sm text-gray-600 mb-4">To: {email.toRecipients.map(r => r.emailAddress.address).join(', ')}</p>
+  <div className="bg-white p-6 rounded-lg shadow-lg">
+    <h2 className="text-2xl font-semibold mb-4 text-purple-800">{email.subject || '(No subject)'}</h2>
+    <p className="text-sm text-gray-600 mb-2">From: {email.sender || 'Unknown'}</p>
+    <p className="text-sm text-gray-600 mb-4">Received: {new Date(email.received_date_time).toLocaleString()}</p>
     <div className="border-t border-b py-4 mb-4">
-      <div dangerouslySetInnerHTML={{ __html: email.body?.content || '' }} className="text-sm" />
+      <div dangerouslySetInnerHTML={{ __html: email.body || '' }} className="text-sm" />
     </div>
   </div>
 );
@@ -48,6 +47,7 @@ const EmailInterface = () => {
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
+  const [showSidebar, setShowSidebar] = useState(true);
 
   useEffect(() => {
     checkConnection();
@@ -114,26 +114,25 @@ const EmailInterface = () => {
   const handleEmailClick = async (email) => {
     setSelectedEmail(email);
     try {
-        const response = await fetch(`${API_URL}/api/mark-email-read/`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken(),
-            },
-            body: JSON.stringify({ email_id: email.email_id, is_read: true }),
-        });
-        if (response.ok) {
-            setEmails(emails.map(e => e.email_id === email.email_id ? { ...e, is_read: true } : e));
-        } else {
-            const errorData = await response.json();
-            console.error(`Failed to mark email as read: ${errorData.error}`);
-        }
+      const response = await fetch(`${API_URL}/api/mark-email-read/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({ email_id: email.email_id, is_read: true }),
+      });
+      if (response.ok) {
+        setEmails(emails.map(e => e.email_id === email.email_id ? { ...e, is_read: true } : e));
+      } else {
+        const errorData = await response.json();
+        console.error(`Failed to mark email as read: ${errorData.error}`);
+      }
     } catch (error) {
-        console.error('Error marking email as read:', error);
+      console.error('Error marking email as read:', error);
     }
-};
-
+  };
 
   if (error) {
     return (
@@ -141,7 +140,7 @@ const EmailInterface = () => {
         <p className="text-red-500 mb-4">{error}</p>
         <button
           onClick={() => { setError(null); checkConnection(); }}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
         >
           Try Again
         </button>
@@ -155,7 +154,7 @@ const EmailInterface = () => {
         <div className="flex items-center justify-center h-full">
           <button
             onClick={handleConnect}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-lg font-semibold shadow-lg"
+            className="px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-lg font-semibold shadow-lg"
           >
             Connect to Outlook
           </button>
@@ -164,20 +163,28 @@ const EmailInterface = () => {
       {isConnected && (
         <div className="flex flex-col h-full">
           <div className="flex justify-between items-center p-4 bg-white shadow-sm">
-            <h1 className="text-2xl font-bold text-gray-800">Email Interface</h1>
+            <h1 className="text-2xl font-bold text-purple-800">Email Interface</h1>
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="p-2 rounded-full hover:bg-purple-100 transition-colors text-purple-600"
+            >
+              {showSidebar ? <ChevronLeft /> : <ChevronRight />}
+            </button>
           </div>
           <div className="flex flex-grow overflow-hidden">
-            <div className="w-1/3 border-r border-gray-200 overflow-y-auto bg-white">
-              {emails.map((email) => (
-                <EmailListItem
-                  key={email.id}
-                  email={email}
-                  isSelected={selectedEmail?.id === email.id}
-                  onClick={() => handleEmailClick(email)}
-                />
-              ))}
-            </div>
-            <div className="w-2/3 p-6 overflow-y-auto">
+            {showSidebar && (
+              <div className="w-1/3 border-r border-gray-200 overflow-y-auto bg-white">
+                {emails.map((email) => (
+                  <EmailListItem
+                    key={email.email_id}
+                    email={email}
+                    isSelected={selectedEmail?.email_id === email.email_id}
+                    onClick={() => handleEmailClick(email)}
+                  />
+                ))}
+              </div>
+            )}
+            <div className={`${showSidebar ? 'w-2/3' : 'w-full'} p-6 overflow-y-auto`}>
               {selectedEmail ? (
                 <EmailPreview email={selectedEmail} />
               ) : (
