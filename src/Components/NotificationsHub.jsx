@@ -4,18 +4,28 @@ import { Bell, Mail, MessageSquare, CheckSquare } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
+const colors = {
+  purple: {
+    light: '#EDE9FE',
+    main: '#8B5CF6',
+  }
+};
+
 const NotificationItem = ({ icon: Icon, source, message, time }) => (
   <motion.div 
-    className="flex items-center p-4 bg-white rounded-lg shadow-md mb-4"
+    className={`flex items-center p-4 bg-${colors.purple.light} rounded-lg shadow-md mb-4`}
     whileHover={{ scale: 1.02 }}
     transition={{ type: "spring", stiffness: 400, damping: 10 }}
   >
-    <Icon className="text-gray-500 mr-4" size={24} />
+    <Icon className={`text-${colors.purple.main} mr-4`} size={24} />
     <div className="flex-grow">
       <p className="font-semibold text-gray-800">{source}</p>
       <p className="text-gray-600">{message}</p>
     </div>
-    <span className="text-sm text-gray-500">{time}</span>
+    <div className="flex items-center">
+      <span className="text-sm text-gray-500 mr-2">{time}</span>
+      <div className={`w-2 h-2 rounded-full bg-${colors.purple.main}`}></div>
+    </div>
   </motion.div>
 );
 
@@ -31,7 +41,7 @@ const NotificationsHub = () => {
         });
         if (response.ok) {
           const data = await response.json();
-          const unreadEmails = data.emails.filter(email => !email.isRead).map(email => ({
+          const unreadEmails = data.emails.map(email => ({
             id: email.id,
             source: 'Email',
             message: `New email from ${email.from?.emailAddress?.name || 'Unknown'}: ${email.subject}`,

@@ -4,23 +4,37 @@ import { Mail } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
+const colors = {
+  purple: {
+    light: '#EDE9FE',
+    main: '#8B5CF6',
+  }
+};
+
 const getCsrfToken = () => {
   return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
 };
 
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
-    className={`flex items-center p-4 cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'} ${email.isRead ? 'text-gray-600' : 'font-semibold text-gray-900'}`}
+    className={`flex items-center p-4 cursor-pointer ${
+      isSelected ? 'bg-blue-50' : email.isRead ? 'bg-white' : colors.purple.light
+    } ${email.isRead ? 'text-gray-600' : 'font-semibold text-gray-900'}`}
     onClick={onClick}
     whileHover={{ scale: 1.01 }}
     transition={{ type: "spring", stiffness: 400, damping: 10 }}
   >
-    <Mail size={18} className={`mr-4 ${email.isRead ? 'text-gray-400' : 'text-blue-500'}`} />
+    <Mail size={18} className={`mr-4 ${email.isRead ? 'text-gray-400' : `text-${colors.purple.main}`}`} />
     <div className="flex-grow">
       <p className="text-sm">{email.from?.emailAddress?.name || 'Unknown Sender'}</p>
       <p className="text-xs text-gray-500 truncate">{email.subject || '(No subject)'}</p>
     </div>
-    <p className="text-xs text-gray-400">{new Date(email.receivedDateTime).toLocaleString()}</p>
+    <div className="flex items-center">
+      <p className="text-xs text-gray-400 mr-2">{new Date(email.receivedDateTime).toLocaleString()}</p>
+      {!email.isRead && (
+        <div className={`w-2 h-2 rounded-full bg-${colors.purple.main}`}></div>
+      )}
+    </div>
   </motion.div>
 );
 
@@ -59,7 +73,7 @@ const EmailInterface = () => {
         setIsConnected(true);
         const data = await response.json();
         if (data.emails && Array.isArray(data.emails)) {
-          setEmails(data.emails.map(email => ({ ...email, isRead: true })));
+          setEmails(data.emails.map(email => ({ ...email, isRead: false })));
         } else {
           console.error('Unexpected data format received from the server');
           setError('Unexpected data format received from the server');
@@ -105,7 +119,7 @@ const EmailInterface = () => {
 
   const handleEmailClick = (email) => {
     setSelectedEmail(email);
-    setEmails(emails.map(e => e.id === email.id ? { ...e, isRead: false } : e));
+    setEmails(emails.map(e => e.id === email.id ? { ...e, isRead: true } : e));
   };
 
   if (error) {
