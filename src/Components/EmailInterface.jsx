@@ -33,11 +33,13 @@ const EmailListItem = ({ email, isSelected, onClick }) => (
 
 const EmailPreview = ({ email }) => (
   <div className="bg-white p-6 rounded-lg shadow-lg">
-    <h2 className="text-2xl font-semibold mb-4 text-purple-800">{email.subject || '(No subject)'}</h2>
-    <p className="text-sm text-gray-600 mb-2">From: {email.sender || 'Unknown'}</p>
-    <p className="text-sm text-gray-600 mb-4">Received: {new Date(email.received_date_time).toLocaleString()}</p>
-    <div className="border-t border-b py-4 mb-4">
-      <div dangerouslySetInnerHTML={{ __html: email.body || '' }} className="text-sm" />
+    <h2 className="text-2xl font-semibold mb-6 text-purple-800">{email.subject || '(No subject)'}</h2>
+    <div className="flex justify-between items-center mb-6">
+      <p className="text-sm text-gray-600">From: {email.sender || 'Unknown'}</p>
+      <p className="text-sm text-gray-500">{new Date(email.received_date_time).toLocaleString()}</p>
+    </div>
+    <div className="border-t border-b py-6 mb-6">
+      <div dangerouslySetInnerHTML={{ __html: email.body || '' }} className="text-sm leading-relaxed" />
     </div>
   </div>
 );
@@ -113,24 +115,26 @@ const EmailInterface = () => {
 
   const handleEmailClick = async (email) => {
     setSelectedEmail(email);
-    try {
-      const response = await fetch(`${API_URL}/api/mark-email-read/`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
-        },
-        body: JSON.stringify({ email_id: email.email_id, is_read: true }),
-      });
-      if (response.ok) {
-        setEmails(emails.map(e => e.email_id === email.email_id ? { ...e, is_read: true } : e));
-      } else {
-        const errorData = await response.json();
-        console.error(`Failed to mark email as read: ${errorData.error}`);
+    if (!email.is_read) {
+      try {
+        const response = await fetch(`${API_URL}/api/mark-email-read/`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          },
+          body: JSON.stringify({ email_id: email.email_id, is_read: true }),
+        });
+        if (response.ok) {
+          setEmails(emails.map(e => e.email_id === email.email_id ? { ...e, is_read: true } : e));
+        } else {
+          const errorData = await response.json();
+          console.error(`Failed to mark email as read: ${errorData.error}`);
+        }
+      } catch (error) {
+        console.error('Error marking email as read:', error);
       }
-    } catch (error) {
-      console.error('Error marking email as read:', error);
     }
   };
 
