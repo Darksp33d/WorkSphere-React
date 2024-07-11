@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Bell, Users, BarChart, Clock, Mail, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmail } from '../Contexts/EmailContext';
+import { useAuth } from '../Contexts/AuthContext';
 import DailyBriefing from './DailyBriefing';
 
 const API_URL = process.env.REACT_APP_API_URL;
