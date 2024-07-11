@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Mail, MessageSquare, CheckSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useEmail } from '../EmailContext';
-
+import { useEmail } from '../Contexts/EmailContext';
 const NotificationItem = ({ icon: Icon, source, message, time, onClick }) => (
   <motion.div 
     className="flex items-center p-4 bg-white rounded-lg shadow-md mb-4 cursor-pointer"

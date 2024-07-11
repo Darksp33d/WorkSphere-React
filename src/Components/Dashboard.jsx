@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Users, BarChart, Clock, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useEmail } from '../EmailContext';
+import { useEmail } from '../Contexts/EmailContext';
 import DailyBriefing from './DailyBriefing';
 
 const Card = ({ title, value, icon: Icon, color }) => (
