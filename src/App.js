@@ -7,6 +7,7 @@ import NotificationsHub from './Components/NotificationsHub';
 import DailyBriefing from './Components/DailyBriefing';
 import EmailInterface from './Components/EmailInterface';
 import Settings from './Components/Settings';
+import { EmailProvider } from './Contexts/EmailContext';
 
 const PrivateRoute = ({ children }) => {
   const isAuthenticated = true; // Replace with actual auth check
@@ -32,17 +33,19 @@ function App() {
   }, []);
   
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        <Route path="/notifications" element={<PrivateRoute><NotificationsHub /></PrivateRoute>} />
-        <Route path="/daily-briefing" element={<PrivateRoute><DailyBriefing /></PrivateRoute>} />
-        <Route path="/email" element={<PrivateRoute><EmailInterface /></PrivateRoute>} />
-        <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-      </Routes>
-    </Router>
+    <EmailProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/notifications" element={<PrivateRoute><NotificationsHub /></PrivateRoute>} />
+          <Route path="/daily-briefing" element={<PrivateRoute><DailyBriefing /></PrivateRoute>} />
+          <Route path="/email" element={<PrivateRoute><EmailInterface /></PrivateRoute>} />
+          <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+        </Routes>
+      </Router>
+    </EmailProvider>
   );
-};
+}
 
 export default App;

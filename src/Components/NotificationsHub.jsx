@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Mail, MessageSquare, CheckSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const API_URL = process.env.REACT_APP_API_URL;
+import { useEmail } from '../EmailContext';
 
 const NotificationItem = ({ icon: Icon, source, message, time, onClick }) => (
   <motion.div 
@@ -25,36 +24,19 @@ const NotificationItem = ({ icon: Icon, source, message, time, onClick }) => (
 );
 
 const NotificationsHub = () => {
-  const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all');
   const navigate = useNavigate();
+  const { emails } = useEmail();
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/unread-emails/`, {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const unreadEmails = data.emails.map(email => ({
-            id: email.email_id,
-            source: 'Email',
-            message: `New email from ${email.sender || 'Unknown'}: ${email.subject}`,
-            time: new Date(email.received_date_time).toLocaleString(),
-            type: 'email'
-          }));
-          setNotifications(unreadEmails);
-        } else {
-          console.error('Failed to fetch unread emails');
-        }
-      } catch (error) {
-        console.error('Error fetching unread emails:', error);
-      }
-    };
-
-    fetchNotifications();
-  }, []);
+  const notifications = emails
+    .filter(email => !email.is_read)
+    .map(email => ({
+      id: email.email_id,
+      source: 'Email',
+      message: `New email from ${email.sender || 'Unknown'}: ${email.subject}`,
+      time: new Date(email.received_date_time).toLocaleString(),
+      type: 'email'
+    }));
 
   const filteredNotifications = notifications.filter(notification => 
     filter === 'all' || notification.type === filter

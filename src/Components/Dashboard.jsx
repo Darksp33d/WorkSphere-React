@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Users, BarChart, Clock, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import NotificationsHub from './NotificationsHub';
+import { useEmail } from '../EmailContext';
 import DailyBriefing from './DailyBriefing';
-
-const API_URL = process.env.REACT_APP_API_URL;
 
 const Card = ({ title, value, icon: Icon, color }) => (
   <motion.div 
@@ -47,28 +45,10 @@ const UnreadEmailPreview = ({ email, onClick }) => (
 );
 
 const Dashboard = () => {
-  const [unreadEmails, setUnreadEmails] = useState([]);
   const navigate = useNavigate();
+  const { emails } = useEmail();
 
-  useEffect(() => {
-    const fetchEmails = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/unread-emails/`, {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUnreadEmails(data.emails.slice(0, 3));
-        } else {
-          console.error('Failed to fetch unread emails');
-        }
-      } catch (error) {
-        console.error('Error fetching unread emails:', error);
-      }
-    };
-
-    fetchEmails();
-  }, []);
+  const unreadEmails = emails.filter(email => !email.is_read).slice(0, 3);
 
   const handleEmailClick = (email) => {
     navigate('/email', { state: { selectedEmailId: email.email_id } });
@@ -92,7 +72,7 @@ const Dashboard = () => {
             <Card title="Team Members" value="12" icon={Users} color="bg-blue-100" />
             <Card title="Projects" value="7" icon={BarChart} color="bg-green-100" />
             <Card title="Hours Logged" value="128" icon={Clock} color="bg-yellow-100" />
-          </div>
+            </div>
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Unread Emails</h2>
             {unreadEmails.map(email => (
