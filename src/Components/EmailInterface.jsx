@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Mail, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useEmail } from '../Contexts/EmailContext';
+
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
     className={`flex items-center p-4 cursor-pointer ${
