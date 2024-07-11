@@ -95,6 +95,7 @@ const UnreadSphereConnectMessagePreview = ({ message, onClick }) => (
 const Dashboard = () => {
   const navigate = useNavigate();
   const { emails } = useEmail();
+  const { user } = useAuth();  // Use the useAuth hook to get the user
   const [slackMessages, setSlackMessages] = useState([]);
   const [sphereConnectMessages, setSphereConnectMessages] = useState([]);
 
@@ -141,7 +142,7 @@ const Dashboard = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        Welcome back, {user.first_name}!
+        Welcome back, {user?.first_name || 'User'}!
       </motion.h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
