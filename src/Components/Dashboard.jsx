@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Users, BarChart, Clock, Mail } from 'lucide-react';
+import { Bell, Users, BarChart, Clock, Mail, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmail } from '../Contexts/EmailContext';
 import DailyBriefing from './DailyBriefing';
@@ -44,14 +44,53 @@ const UnreadEmailPreview = ({ email, onClick }) => (
   </motion.div>
 );
 
+const UnreadSlackMessagePreview = ({ message, onClick }) => (
+  <motion.div 
+    className="bg-white p-4 rounded-lg shadow-md mb-4 cursor-pointer"
+    whileHover={{ scale: 1.02 }}
+    transition={{ type: "spring", stiffness: 400, damping: 10 }}
+    onClick={onClick}
+  >
+    <div className="flex items-center justify-between">
+      <div className="flex items-center">
+        <MessageSquare size={18} className="text-purple-600 mr-3" />
+        <div>
+          <p className="font-semibold text-gray-800">{message.user || 'Unknown User'}</p>
+          <p className="text-sm text-gray-600 truncate">{message.text}</p>
+        </div>
+      </div>
+      <div className="flex items-center">
+        <p className="text-xs text-gray-500 mr-2">{new Date(parseFloat(message.ts) * 1000).toLocaleString()}</p>
+        <div className="w-2 h-2 rounded-full bg-purple-600"></div>
+      </div>
+    </div>
+  </motion.div>
+);
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { emails } = useEmail();
+  const [slackMessages, setSlackMessages] = useState([]);
+
+  useEffect(() => {
+    async function fetchSlackMessages() {
+      const response = await fetch('/api/get-unread-slack-messages/', { credentials: 'include' });
+      const data = await response.json();
+      if (data.messages) {
+        setSlackMessages(data.messages.slice(0, 3));
+      }
+    }
+    fetchSlackMessages();
+  }, []);
 
   const unreadEmails = emails.filter(email => !email.is_read).slice(0, 3);
 
   const handleEmailClick = (email) => {
     navigate('/email', { state: { selectedEmailId: email.email_id } });
+  };
+
+  const handleSlackMessageClick = (message) => {
+    window.location.href = `https://slack.com/app_redirect?channel=${message.channel}&message=${message.ts}`;
   };
 
   return (
@@ -68,11 +107,11 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <div className="grid grid-cols-2 gap-6 mb-8">
-            <Card title="Notifications" value={unreadEmails.length} icon={Bell} color="bg-purple-100" />
+            <Card title="Notifications" value={unreadEmails.length + slackMessages.length} icon={Bell} color="bg-purple-100" />
             <Card title="Team Members" value="12" icon={Users} color="bg-blue-100" />
             <Card title="Projects" value="7" icon={BarChart} color="bg-green-100" />
             <Card title="Hours Logged" value="128" icon={Clock} color="bg-yellow-100" />
-            </div>
+          </div>
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Unread Emails</h2>
             {unreadEmails.map(email => (
@@ -80,6 +119,15 @@ const Dashboard = () => {
             ))}
             {unreadEmails.length === 0 && (
               <p className="text-center text-gray-500">No unread emails</p>
+            )}
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-lg mt-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Unread Slack Messages</h2>
+            {slackMessages.map(message => (
+              <UnreadSlackMessagePreview key={message.ts} message={message} onClick={() => handleSlackMessageClick(message)} />
+            ))}
+            {slackMessages.length === 0 && (
+              <p className="text-center text-gray-500">No unread Slack messages</p>
             )}
           </div>
         </div>
