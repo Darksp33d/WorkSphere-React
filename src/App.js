@@ -8,10 +8,12 @@ import DailyBriefing from './Components/DailyBriefing';
 import EmailInterface from './Components/EmailInterface';
 import Settings from './Components/Settings';
 import { EmailProvider } from './Contexts/EmailContext';
+import { AuthProvider, useAuth } from './Contexts/AuthContext';
+import SphereConnect from './Components/SphereConnect';
 
 const PrivateRoute = ({ children }) => {
-  const isAuthenticated = true; // Replace with actual auth check
-  return isAuthenticated ? <AuthenticatedLayout>{children}</AuthenticatedLayout> : <Navigate to="/" />;
+  const { user } = useAuth();
+  return user ? <AuthenticatedLayout>{children}</AuthenticatedLayout> : <Navigate to="/" />;
 };
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -33,18 +35,21 @@ function App() {
   }, []);
   
   return (
-    <EmailProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/notifications" element={<PrivateRoute><NotificationsHub /></PrivateRoute>} />
-          <Route path="/daily-briefing" element={<PrivateRoute><DailyBriefing /></PrivateRoute>} />
-          <Route path="/email" element={<PrivateRoute><EmailInterface /></PrivateRoute>} />
-          <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-        </Routes>
-      </Router>
-    </EmailProvider>
+    <AuthProvider>
+      <EmailProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/notifications" element={<PrivateRoute><NotificationsHub /></PrivateRoute>} />
+            <Route path="/daily-briefing" element={<PrivateRoute><DailyBriefing /></PrivateRoute>} />
+            <Route path="/email" element={<PrivateRoute><EmailInterface /></PrivateRoute>} />
+            <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+            <Route path="/messaging" element={<PrivateRoute><SphereConnect /></PrivateRoute>} />
+          </Routes>
+        </Router>
+      </EmailProvider>
+    </AuthProvider>
   );
 }
 

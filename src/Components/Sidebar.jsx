@@ -31,7 +31,7 @@ const Sidebar = () => {
         <SidebarLink icon={Bell} text="Notifications" to="/notifications" isExpanded={isExpanded} />
         <SidebarLink icon={Mail} text="Email" to="/email" isExpanded={isExpanded} />
         <SidebarLink icon={CheckSquare} text="Jira Tasks" to="/tasks" isExpanded={isExpanded} />
-        <SidebarLink icon={MessageSquare} text="Messaging" to="/messaging" isExpanded={isExpanded} />
+        <SidebarLink icon={MessageSquare} text="SphereConnect" to="/messaging" isExpanded={isExpanded} />
         <SidebarLink icon={FileText} text="Documents" to="/documents" isExpanded={isExpanded} />
         <SidebarLink icon={Users} text="Contacts" to="/contacts" isExpanded={isExpanded} />
         <SidebarLink icon={BarChart2} text="Analytics" to="/analytics" isExpanded={isExpanded} />
