@@ -11,25 +11,26 @@ const getCsrfToken = () => {
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
     className={`flex items-center p-4 cursor-pointer ${
-      isSelected ? 'bg-blue-50' : email.isRead ? 'bg-white' : 'bg-purple-100'
-    } ${email.isRead ? 'text-gray-600' : 'font-semibold text-gray-900'}`}
+      isSelected ? 'bg-blue-50' : email.is_read ? 'bg-white' : 'bg-purple-100'
+    } ${email.is_read ? 'text-gray-600' : 'font-semibold text-gray-900'}`}
     onClick={onClick}
     whileHover={{ scale: 1.01 }}
     transition={{ type: "spring", stiffness: 400, damping: 10 }}
   >
-    <Mail size={18} className={`mr-4 ${email.isRead ? 'text-gray-400' : 'text-purple-600'}`} />
+    <Mail size={18} className={`mr-4 ${email.is_read ? 'text-gray-400' : 'text-purple-600'}`} />
     <div className="flex-grow">
-      <p className="text-sm">{email.from?.emailAddress?.name || 'Unknown Sender'}</p>
+      <p className="text-sm">{email.sender || 'Unknown Sender'}</p>
       <p className="text-xs text-gray-500 truncate">{email.subject || '(No subject)'}</p>
     </div>
     <div className="flex items-center">
-      <p className="text-xs text-gray-400 mr-2">{new Date(email.receivedDateTime).toLocaleString()}</p>
-      {!email.isRead && (
+      <p className="text-xs text-gray-400 mr-2">{new Date(email.received_date_time).toLocaleString()}</p>
+      {!email.is_read && (
         <div className="w-2 h-2 rounded-full bg-purple-600"></div>
       )}
     </div>
   </motion.div>
 );
+
 
 const EmailPreview = ({ email }) => (
   <div className="bg-white p-6 rounded-lg shadow">
@@ -113,25 +114,26 @@ const EmailInterface = () => {
   const handleEmailClick = async (email) => {
     setSelectedEmail(email);
     try {
-      const response = await fetch(`${API_URL}/api/mark-email-read/`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
-        },
-        body: JSON.stringify({ email_id: email.id, is_read: true }),
-      });
-      if (response.ok) {
-        setEmails(emails.map(e => e.id === email.id ? { ...e, isRead: true } : e));
-      } else {
-        const errorData = await response.json();
-        console.error(`Failed to mark email as read: ${errorData.error}`);
-      }
+        const response = await fetch(`${API_URL}/api/mark-email-read/`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({ email_id: email.email_id, is_read: true }),
+        });
+        if (response.ok) {
+            setEmails(emails.map(e => e.email_id === email.email_id ? { ...e, is_read: true } : e));
+        } else {
+            const errorData = await response.json();
+            console.error(`Failed to mark email as read: ${errorData.error}`);
+        }
     } catch (error) {
-      console.error('Error marking email as read:', error);
+        console.error('Error marking email as read:', error);
     }
-  };
+};
+
 
   if (error) {
     return (
