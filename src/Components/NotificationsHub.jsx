@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Mail, MessageSquare, CheckSquare } from 'lucide-react';
 
+const API_URL = process.env.REACT_APP_API_URL;
+
 const NotificationItem = ({ icon: Icon, source, message, time }) => (
   <motion.div 
     className="flex items-center p-4 bg-white rounded-lg shadow-md mb-4"
@@ -22,17 +24,27 @@ const NotificationsHub = () => {
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    // TODO: Replace with actual API call
     const fetchNotifications = async () => {
-      // Simulating API call
-      const dummyNotifications = [
-        { id: 1, source: 'Email', message: 'New email from John Doe', time: '5m ago', type: 'email' },
-        { id: 2, source: 'Slack', message: 'Mention in #general channel', time: '10m ago', type: 'message' },
-        { id: 3, source: 'Jira', message: 'Task "Implement login" assigned to you', time: '1h ago', type: 'task' },
-        { id: 4, source: 'Email', message: 'Weekly report due tomorrow', time: '2h ago', type: 'email' },
-        { id: 5, source: 'Teams', message: 'New meeting scheduled: Project Review', time: '3h ago', type: 'message' },
-      ];
-      setNotifications(dummyNotifications);
+      try {
+        const response = await fetch(`${API_URL}/api/emails/`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const unreadEmails = data.emails.filter(email => !email.isRead).map(email => ({
+            id: email.id,
+            source: 'Email',
+            message: `New email from ${email.from?.emailAddress?.name || 'Unknown'}: ${email.subject}`,
+            time: new Date(email.receivedDateTime).toLocaleString(),
+            type: 'email'
+          }));
+          setNotifications(unreadEmails);
+        } else {
+          console.error('Failed to fetch emails');
+        }
+      } catch (error) {
+        console.error('Error fetching emails:', error);
+      }
     };
 
     fetchNotifications();
@@ -57,8 +69,6 @@ const NotificationsHub = () => {
       <div className="mb-6 flex space-x-4">
         <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-full ${filter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}>All</button>
         <button onClick={() => setFilter('email')} className={`px-4 py-2 rounded-full ${filter === 'email' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Emails</button>
-        <button onClick={() => setFilter('message')} className={`px-4 py-2 rounded-full ${filter === 'message' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Messages</button>
-        <button onClick={() => setFilter('task')} className={`px-4 py-2 rounded-full ${filter === 'task' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'}`}>Tasks</button>
       </div>
       {filteredNotifications.map(notification => (
         <NotificationItem 
