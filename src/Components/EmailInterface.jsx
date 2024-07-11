@@ -4,13 +4,6 @@ import { Mail } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const colors = {
-  purple: {
-    light: '#EDE9FE',
-    main: '#8B5CF6',
-  }
-};
-
 const getCsrfToken = () => {
   return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
 };
@@ -18,13 +11,13 @@ const getCsrfToken = () => {
 const EmailListItem = ({ email, isSelected, onClick }) => (
   <motion.div
     className={`flex items-center p-4 cursor-pointer ${
-      isSelected ? 'bg-blue-50' : email.isRead ? 'bg-white' : colors.purple.light
+      isSelected ? 'bg-blue-50' : email.isRead ? 'bg-white' : 'bg-purple-100'
     } ${email.isRead ? 'text-gray-600' : 'font-semibold text-gray-900'}`}
     onClick={onClick}
     whileHover={{ scale: 1.01 }}
     transition={{ type: "spring", stiffness: 400, damping: 10 }}
   >
-    <Mail size={18} className={`mr-4 ${email.isRead ? 'text-gray-400' : `text-${colors.purple.main}`}`} />
+    <Mail size={18} className={`mr-4 ${email.isRead ? 'text-gray-400' : 'text-purple-600'}`} />
     <div className="flex-grow">
       <p className="text-sm">{email.from?.emailAddress?.name || 'Unknown Sender'}</p>
       <p className="text-xs text-gray-500 truncate">{email.subject || '(No subject)'}</p>
@@ -32,7 +25,7 @@ const EmailListItem = ({ email, isSelected, onClick }) => (
     <div className="flex items-center">
       <p className="text-xs text-gray-400 mr-2">{new Date(email.receivedDateTime).toLocaleString()}</p>
       {!email.isRead && (
-        <div className={`w-2 h-2 rounded-full bg-${colors.purple.main}`}></div>
+        <div className="w-2 h-2 rounded-full bg-purple-600"></div>
       )}
     </div>
   </motion.div>
@@ -73,7 +66,7 @@ const EmailInterface = () => {
         setIsConnected(true);
         const data = await response.json();
         if (data.emails && Array.isArray(data.emails)) {
-          setEmails(data.emails.map(email => ({ ...email, isRead: false })));
+          setEmails(data.emails);
         } else {
           console.error('Unexpected data format received from the server');
           setError('Unexpected data format received from the server');
@@ -117,9 +110,27 @@ const EmailInterface = () => {
     }
   };
 
-  const handleEmailClick = (email) => {
+  const handleEmailClick = async (email) => {
     setSelectedEmail(email);
-    setEmails(emails.map(e => e.id === email.id ? { ...e, isRead: true } : e));
+    try {
+      const response = await fetch(`${API_URL}/api/mark-email-read/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({ email_id: email.id, is_read: true }),
+      });
+      if (response.ok) {
+        setEmails(emails.map(e => e.id === email.id ? { ...e, isRead: true } : e));
+      } else {
+        const errorData = await response.json();
+        console.error(`Failed to mark email as read: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Error marking email as read:', error);
+    }
   };
 
   if (error) {
@@ -165,7 +176,7 @@ const EmailInterface = () => {
               ))}
             </div>
             <div className="w-2/3 p-6 overflow-y-auto">
-            {selectedEmail ? (
+              {selectedEmail ? (
                 <EmailPreview email={selectedEmail} />
               ) : (
                 <p className="text-center text-gray-500 mt-10">Select an email to view its content</p>

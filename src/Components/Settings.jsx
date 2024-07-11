@@ -4,102 +4,57 @@ import { motion } from 'framer-motion';
 const API_URL = process.env.REACT_APP_API_URL;
 
 const Settings = () => {
-  const [apiKeys, setApiKeys] = useState({
-    clientId: '',
-    tenantId: '',
-    clientSecret: ''
-  });
-  const [newClientId, setNewClientId] = useState('');
-  const [newTenantId, setNewTenantId] = useState('');
-  const [newClientSecret, setNewClientSecret] = useState('');
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    fetchApiKeys();
+    checkOutlookConnection();
   }, []);
 
   const getCsrfToken = () => {
-    return document.cookie.split('; ')
-      .find(row => row.startsWith('csrftoken='))
-      ?.split('=')[1];
+    return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
   };
 
-  const fetchApiKeys = async () => {
+  const checkOutlookConnection = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/manage-key/`, {
-        method: 'GET',
+      const response = await fetch(`${API_URL}/api/check-outlook-connection/`, {
+        credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
           'X-CSRFToken': getCsrfToken(),
         },
-        credentials: 'include',
       });
-      if (!response.ok) {
-        throw new Error('Failed to fetch API keys');
+      if (response.ok) {
+        const data = await response.json();
+        setIsConnected(data.connected);
+      } else {
+        setIsConnected(false);
       }
-      const data = await response.json();
-      setApiKeys({
-        clientId: data.keys.client_id || '',
-        tenantId: data.keys.tenant_id || '',
-        clientSecret: data.keys.client_secret || ''
-      });
-      setIsConnected(!!data.keys.access_token);
     } catch (error) {
-      console.error('Error fetching API keys:', error);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch(`${API_URL}/api/manage-key/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
-        },
-        body: JSON.stringify({
-          clientId: newClientId,
-          tenantId: newTenantId,
-          clientSecret: newClientSecret
-        }),
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to save API keys');
-      }
-      await fetchApiKeys();
-      setNewClientId('');
-      setNewTenantId('');
-      setNewClientSecret('');
-    } catch (error) {
-      console.error('Error saving API keys:', error);
-    }
-  };
-
-  const handleDelete = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/manage-key/`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
-        },
-        body: JSON.stringify({ service: 'outlook' }),
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete API keys');
-      }
-      await fetchApiKeys();
+      console.error('Error checking Outlook connection:', error);
       setIsConnected(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/logout/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': getCsrfToken(),
+        },
+      });
+      if (response.ok) {
+        setIsConnected(false);
+      } else {
+        console.error('Failed to disconnect');
+      }
     } catch (error) {
-      console.error('Error deleting API keys:', error);
+      console.error('Error disconnecting:', error);
     }
   };
 
   const initiateAuth = async () => {
-    window.location.href = `${API_URL}/start_auth/`;
+    window.location.href = `${API_URL}/api/outlook/auth/`;
   };
 
   return (
@@ -111,46 +66,17 @@ const Settings = () => {
     >
       <h1 className="text-3xl font-bold mb-8">Settings</h1>
       <div className="bg-white p-6 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-semibold mb-4">Outlook API Configuration</h2>
-        <form onSubmit={handleSubmit} className="mb-6">
-          <input
-            type="text"
-            value={newClientId}
-            onChange={(e) => setNewClientId(e.target.value)}
-            placeholder="Enter Outlook Client ID"
-            className="w-full p-2 border rounded mb-4"
-          />
-          <input
-            type="text"
-            value={newTenantId}
-            onChange={(e) => setNewTenantId(e.target.value)}
-            placeholder="Enter Outlook Tenant ID"
-            className="w-full p-2 border rounded mb-4"
-          />
-          <input
-            type="text"
-            value={newClientSecret}
-            onChange={(e) => setNewClientSecret(e.target.value)}
-            placeholder="Enter Outlook Client Secret"
-            className="w-full p-2 border rounded mb-4"
-          />
-          <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-            Save Outlook API Configuration
-          </button>
-        </form>
+        <h2 className="text-2xl font-semibold mb-4">Outlook Connection</h2>
         <div>
-          <h3 className="text-xl font-semibold mb-2">Stored API Configuration:</h3>
-          <div className="mb-2">Client ID: {apiKeys.clientId ? `${apiKeys.clientId.substring(0, 10)}...` : 'Not set'}</div>
-          <div className="mb-2">Tenant ID: {apiKeys.tenantId ? `${apiKeys.tenantId.substring(0, 10)}...` : 'Not set'}</div>
-          <div className="mb-2">Client Secret: {apiKeys.clientSecret ? `${apiKeys.clientSecret.substring(0, 10)}...` : 'Not set'}</div>
           <div className="mb-4">
             Connection Status: {isConnected ? 'Connected' : 'Not Connected'}
           </div>
           <button 
-            onClick={handleDelete}
+            onClick={handleDisconnect}
             className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 mr-4"
+            disabled={!isConnected}
           >
-            Delete Configuration
+            Disconnect from Outlook
           </button>
           <button
             onClick={initiateAuth}
