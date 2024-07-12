@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../Contexts/AuthContext';
-import { Send, Users, Hash, Plus, Search, X, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { Send, Users, Hash, Plus, Search, X, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API_URL = process.env.REACT_APP_API_URL;
