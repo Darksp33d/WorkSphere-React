@@ -33,6 +33,11 @@ const Modal = ({ isOpen, onClose, title, children }) => (
 
 const SphereConnect = () => {
   const { user } = useAuth();
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
   const [messages, setMessages] = useState([]);
   const [channels, setChannels] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -63,7 +68,7 @@ const SphereConnect = () => {
 
   useEffect(() => {
     if (location.state?.selectedMessageId) {
-      const channelId = channels.find(channel => 
+      const channelId = channels.find(channel =>
         channel.messages?.some(message => message.id === location.state.selectedMessageId)
       )?.id;
       if (channelId) {
@@ -84,7 +89,7 @@ const SphereConnect = () => {
 
   useEffect(() => {
     setFilteredContacts(
-      contacts.filter(contact => 
+      contacts.filter(contact =>
         contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         contact.email.toLowerCase().includes(searchTerm.toLowerCase())
       )
@@ -138,15 +143,17 @@ const SphereConnect = () => {
   };
 
   const fetchMessages = async () => {
+    if (!selectedChannel && !selectedContact) return;
+
     setIsLoading(true);
     try {
       const endpoint = selectedContact
         ? `${API_URL}/api/get-private-messages/?user_id=${selectedContact.id}`
         : `${API_URL}/api/get-group-messages/${selectedChannel.id}/`;
-      
+
       const response = await fetch(endpoint, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched messages:', data);  // Add this line
+      console.log('Fetched messages:', data);
       setMessages(data.messages || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -158,7 +165,7 @@ const SphereConnect = () => {
   const sendMessage = async () => {
     if (!newMessage.trim() || (!selectedChannel && !selectedContact)) return;
 
-    const endpoint = selectedChannel 
+    const endpoint = selectedChannel
       ? `${API_URL}/api/send-group-message/`
       : `${API_URL}/api/send-private-message/`;
 
@@ -226,7 +233,7 @@ const SphereConnect = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Left Sidebar */}
-      <motion.div 
+      <motion.div
         className={`bg-indigo-700 text-white p-4 ${isLeftSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out`}
         initial={false}
         animate={{ width: isLeftSidebarOpen ? 256 : 64 }}
@@ -243,7 +250,7 @@ const SphereConnect = () => {
               <h3 className="font-semibold mb-2">Group Chats</h3>
               <ul className="space-y-2">
                 {channels.map(channel => (
-                  <li 
+                  <li
                     key={channel.id}
                     className={`cursor-pointer p-2 rounded ${selectedChannel?.id === channel.id ? 'bg-indigo-600' : 'hover:bg-indigo-600'} transition-colors duration-200`}
                     onClick={() => {
@@ -261,22 +268,22 @@ const SphereConnect = () => {
               <h3 className="font-semibold mb-2">Private Chats</h3>
               <ul className="space-y-2">
                 {privateChats.map(chat => (
-                  <li 
-                    key={chat}
-                    className={`cursor-pointer p-2 rounded ${selectedContact?.email === chat ? 'bg-indigo-600' : 'hover:bg-indigo-600'} transition-colors duration-200`}
+                  <li
+                    key={typeof chat === 'object' ? chat.id : chat}
+                    className={`cursor-pointer p-2 rounded ${selectedContact?.email === (typeof chat === 'object' ? chat.email : chat) ? 'bg-indigo-600' : 'hover:bg-indigo-600'} transition-colors duration-200`}
                     onClick={() => {
-                      const contact = contacts.find(c => c.email === chat);
-                      setSelectedContact(contact || {});  // Provide a default empty object
+                      const contact = contacts.find(c => c.email === (typeof chat === 'object' ? chat.email : chat));
+                      setSelectedContact(contact || {});
                       setSelectedChannel(null);
                     }}
                   >
                     <MessageSquare className="inline-block mr-2" size={16} />
-                    {chat}
+                    {typeof chat === 'object' ? chat.email : chat}
                   </li>
                 ))}
               </ul>
             </div>
-            <button 
+            <button
               className="mt-4 w-full p-2 bg-indigo-500 rounded hover:bg-indigo-600 transition-colors duration-200"
               onClick={() => setIsNewChannelModalOpen(true)}
             >
@@ -309,10 +316,10 @@ const SphereConnect = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className={`mb-4 ${message.sender.email === user.email ? 'self-end' : 'self-start'}`}
+                    className={`mb-4 ${message.sender?.email === user?.email ? 'self-end' : 'self-start'}`}
                   >
-                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${message.sender.email === user.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
-                      <p className="font-semibold text-sm">{message.sender.name}</p>
+                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${message.sender?.email === user?.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
+                      <p className="font-semibold text-sm">{message.sender?.name || 'Unknown'}</p>
                       <p className="mt-1">{message.content}</p>
                       <p className="text-xs mt-1 opacity-75">
                         {new Date(message.timestamp).toLocaleString()}
@@ -327,7 +334,7 @@ const SphereConnect = () => {
         </div>
         <div className="bg-white p-4 border-t border-gray-200">
           <div className="flex">
-            <input 
+            <input
               type="text"
               className="flex-1 p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Type a message..."
@@ -335,7 +342,7 @@ const SphereConnect = () => {
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
             />
-            <button 
+            <button
               onClick={sendMessage}
               className="px-4 py-2 bg-indigo-500 text-white rounded-r-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
             >
@@ -346,7 +353,7 @@ const SphereConnect = () => {
       </div>
 
       {/* Right Sidebar */}
-      <motion.div 
+      <motion.div
         className={`bg-white p-4 border-l border-gray-200 ${isRightSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out`}
         initial={false}
         animate={{ width: isRightSidebarOpen ? 256 : 64 }}
@@ -360,7 +367,7 @@ const SphereConnect = () => {
         {isRightSidebarOpen && (
           <>
             <div className="relative mb-4">
-              <input 
+              <input
                 type="text"
                 className="w-full p-2 pr-8 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="Search contacts..."
@@ -372,7 +379,7 @@ const SphereConnect = () => {
             <ul className="space-y-2 overflow-y-auto max-h-[calc(100vh-200px)]">
               <AnimatePresence>
                 {filteredContacts.map(contact => (
-                  <motion.li 
+                  <motion.li
                     key={contact.id}
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -380,14 +387,14 @@ const SphereConnect = () => {
                     className="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer transition-colors duration-200"
                     onClick={() => handleContactClick(contact)}
                   >
-                    <img 
-                      src={contact.profile_picture || 'https://via.placeholder.com/40'} 
-                      alt={contact.name} 
+                    <img
+                      src={contact.profile_picture || 'https://via.placeholder.com/40'}
+                      alt={contact.name || 'Contact'}
                       className="w-8 h-8 rounded-full mr-2"
                     />
                     <div>
-                      <p className="font-semibold">{contact.name}</p>
-                      <p className="text-sm text-gray-500">{contact.email}</p>
+                      <p className="font-semibold">{contact.name || 'Unknown'}</p>
+                      <p className="text-sm text-gray-500">{contact.email || 'No email'}</p>
                     </div>
                   </motion.li>
                 ))}
@@ -428,9 +435,9 @@ const SphereConnect = () => {
       >
         {selectedUser && (
           <div className="text-center">
-            <img 
-              src={selectedUser.profile_picture || 'https://via.placeholder.com/100'} 
-              alt={selectedUser.name} 
+            <img
+              src={selectedUser.profile_picture || 'https://via.placeholder.com/100'}
+              alt={selectedUser.name}
               className="w-24 h-24 rounded-full mx-auto mb-4"
             />
             <h3 className="text-xl font-bold mb-2">{selectedUser.name}</h3>
