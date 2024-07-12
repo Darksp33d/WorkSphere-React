@@ -32,6 +32,7 @@ const Modal = ({ isOpen, onClose, title, children }) => (
 );
 
 const SphereConnect = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   useEffect(() => {
     if (!user) {
@@ -57,7 +58,6 @@ const SphereConnect = () => {
   const [userCardOpen, setUserCardOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const messagesEndRef = useRef(null);
-  const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
