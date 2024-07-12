@@ -311,8 +311,8 @@ const SphereConnect = () => {
                     transition={{ duration: 0.3 }}
                     className={`mb-4 ${message.sender === user.email ? 'self-end' : 'self-start'}`}
                   >
-                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${message.sender === user.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
-                      <p className="font-semibold text-sm">{message.sender}</p>
+                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${message.sender.email === user.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
+                      <p className="font-semibold text-sm">{message.sender.name}</p>
                       <p className="mt-1">{message.content}</p>
                       <p className="text-xs mt-1 opacity-75">
                         {new Date(message.timestamp).toLocaleString()}
