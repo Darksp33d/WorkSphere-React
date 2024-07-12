@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../Contexts/AuthContext';
 
 const Button = ({ children, className, ...props }) => (
   <button
