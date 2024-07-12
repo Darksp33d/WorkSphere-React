@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Mail, MessageSquare, Slack, X } from 'lucide-react';
+import { Bell, Mail, MessageSquare, Slack, Hash, X } from 'lucide-react';
 import { useEmail } from '../Contexts/EmailContext';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const NotificationItem = ({ icon: Icon, source, message, time, onClick, onDismiss }) => (
+const NotificationItem = ({ notification, onDismiss }) => (
   <motion.div 
     className="flex items-center p-4 bg-white rounded-lg shadow-md mb-4 cursor-pointer"
     whileHover={{ scale: 1.02 }}
@@ -16,16 +16,18 @@ const NotificationItem = ({ icon: Icon, source, message, time, onClick, onDismis
     exit={{ opacity: 0, y: -20 }}
     transition={{ type: "spring", stiffness: 500, damping: 30 }}
   >
-    <Icon className="text-blue-600 mr-4 flex-shrink-0" size={24} />
-    <div className="flex-grow" onClick={onClick}>
-      <p className="font-semibold text-gray-800">{source}</p>
-      <p className="text-gray-600 text-sm">{message}</p>
-      <p className="text-xs text-gray-500 mt-1">{time}</p>
+    {notification.type === 'email' && <Mail className="text-blue-600 mr-4 flex-shrink-0" size={24} />}
+    {notification.type === 'slack' && <Slack className="text-green-600 mr-4 flex-shrink-0" size={24} />}
+    {notification.type === 'sphereconnect' && <Hash className="text-purple-600 mr-4 flex-shrink-0" size={24} />}
+    <div className="flex-grow">
+      <p className="font-semibold text-gray-800">{notification.source}</p>
+      <p className="text-gray-600 text-sm">{notification.message}</p>
+      <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
     </div>
     <button 
       onClick={(e) => {
         e.stopPropagation();
-        onDismiss();
+        onDismiss(notification.id);
       }}
       className="ml-2 p-1 rounded-full hover:bg-gray-200 transition-colors duration-200"
     >
@@ -50,7 +52,7 @@ const NotificationsHub = () => {
     try {
       const [slackResponse, sphereConnectResponse] = await Promise.all([
         fetch(`${API_URL}/api/get-unread-slack-messages/`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/get-private-messages/`, { credentials: 'include' })
+        fetch(`${API_URL}/api/get-unread-sphereconnect-messages/`, { credentials: 'include' })
       ]);
 
       const [slackData, sphereConnectData] = await Promise.all([
@@ -62,26 +64,26 @@ const NotificationsHub = () => {
         .filter(email => !email.is_read)
         .map(email => ({
           id: email.email_id,
+          type: 'email',
           source: 'Email',
           message: `New email from ${email.sender || 'Unknown'}: ${email.subject}`,
-          time: new Date(email.received_date_time).toLocaleString(),
-          type: 'email'
+          time: new Date(email.received_date_time).toLocaleString()
         }));
 
       const slackNotifications = slackData.messages ? slackData.messages.map(msg => ({
         id: msg.ts,
+        type: 'slack',
         source: 'Slack',
         message: msg.text,
-        time: new Date(parseFloat(msg.ts) * 1000).toLocaleString(),
-        type: 'slack'
+        time: new Date(parseFloat(msg.ts) * 1000).toLocaleString()
       })) : [];
 
       const sphereConnectNotifications = sphereConnectData.messages ? sphereConnectData.messages.map(msg => ({
         id: msg.id,
+        type: 'sphereconnect',
         source: 'SphereConnect',
-        message: msg.content,
-        time: new Date(msg.timestamp).toLocaleString(),
-        type: 'sphereconnect'
+        message: `New message in ${msg.channel_name}: ${msg.content}`,
+        time: new Date(msg.timestamp).toLocaleString()
       })) : [];
 
       setNotifications([...emailNotifications, ...slackNotifications, ...sphereConnectNotifications]);
@@ -93,18 +95,23 @@ const NotificationsHub = () => {
   };
 
   const handleNotificationClick = (notification) => {
-    if (notification.type === 'email') {
-      navigate('/email', { state: { selectedEmailId: notification.id } });
-    } else if (notification.type === 'slack') {
-      window.location.href = `https://slack.com/app_redirect?channel=${notification.channel}&message=${notification.id}`;
-    } else if (notification.type === 'sphereconnect') {
-      navigate('/messaging', { state: { selectedMessageId: notification.id } });
+    switch (notification.type) {
+      case 'email':
+        navigate('/email', { state: { selectedEmailId: notification.id } });
+        break;
+      case 'slack':
+        window.location.href = `https://slack.com/app_redirect?channel=${notification.channel}&message=${notification.id}`;
+        break;
+      case 'sphereconnect':
+        navigate('/messaging', { state: { selectedMessageId: notification.id } });
+        break;
+      default:
+        break;
     }
   };
 
   const handleDismiss = async (notificationId) => {
-    // Implement the logic to dismiss the notification
-    // This could involve marking it as read in the backend
+    // In a real application, you would call an API to mark the notification as read
     // For now, we'll just remove it from the local state
     setNotifications(notifications.filter(n => n.id !== notificationId));
   };
@@ -113,19 +120,6 @@ const NotificationsHub = () => {
     if (activeFilter === 'all') return true;
     return notification.type === activeFilter;
   });
-
-  const getIcon = (type) => {
-    switch (type) {
-      case 'email':
-        return Mail;
-      case 'slack':
-        return Slack;
-      case 'sphereconnect':
-        return MessageSquare;
-      default:
-        return Bell;
-    }
-  };
 
   return (
     <div className="p-8 bg-gray-100 min-h-screen">
@@ -160,13 +154,10 @@ const NotificationsHub = () => {
         <AnimatePresence>
           {filteredNotifications.map(notification => (
             <NotificationItem 
-              key={notification.id}
-              icon={getIcon(notification.type)}
-              source={notification.source}
-              message={notification.message}
-              time={notification.time}
+              key={`${notification.type}-${notification.id}`}
+              notification={notification}
+              onDismiss={handleDismiss}
               onClick={() => handleNotificationClick(notification)}
-              onDismiss={() => handleDismiss(notification.id)}
             />
           ))}
         </AnimatePresence>
