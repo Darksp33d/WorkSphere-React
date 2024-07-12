@@ -45,6 +45,7 @@ const SphereConnect = () => {
   const [isNewChannelModalOpen, setIsNewChannelModalOpen] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,10 +67,10 @@ const SphereConnect = () => {
   }, [location, channels]);
 
   useEffect(() => {
-    if (selectedChannel) {
-      fetchMessages(selectedChannel.id);
+    if (selectedChannel || selectedContact) {
+      fetchMessages();
     }
-  }, [selectedChannel]);
+  }, [selectedChannel, selectedContact]);
 
   useEffect(() => {
     scrollToBottom();
@@ -89,21 +90,46 @@ const SphereConnect = () => {
   };
 
   const fetchChannels = async () => {
-    const response = await fetch(`${API_URL}/api/get-groups/`, { credentials: 'include' });
-    const data = await response.json();
-    setChannels(data.groups || []);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/get-groups/`, { credentials: 'include' });
+      const data = await response.json();
+      setChannels(data.groups || []);
+    } catch (error) {
+      console.error('Error fetching channels:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchContacts = async () => {
-    const response = await fetch(`${API_URL}/api/get-contacts/`, { credentials: 'include' });
-    const data = await response.json();
-    setContacts(data.contacts || []);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/get-contacts/`, { credentials: 'include' });
+      const data = await response.json();
+      setContacts(data.contacts || []);
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const fetchMessages = async (channelId) => {
-    const response = await fetch(`${API_URL}/api/get-group-messages/${channelId}/`, { credentials: 'include' });
-    const data = await response.json();
-    setMessages(data.messages || []);
+  const fetchMessages = async () => {
+    setIsLoading(true);
+    try {
+      const endpoint = selectedContact
+        ? `${API_URL}/api/get-private-messages/`
+        : `${API_URL}/api/get-group-messages/${selectedChannel.id}/`;
+      
+      const response = await fetch(endpoint, { credentials: 'include' });
+      const data = await response.json();
+      setMessages(data.messages || []);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const sendMessage = async () => {
@@ -117,41 +143,45 @@ const SphereConnect = () => {
       ? { group_id: selectedChannel.id, content: newMessage }
       : { recipient_id: selectedContact.id, content: newMessage };
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken(),
-      },
-      body: JSON.stringify(body),
-      credentials: 'include',
-    });
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify(body),
+        credentials: 'include',
+      });
 
-    if (response.ok) {
-      setNewMessage('');
-      if (selectedChannel) {
-        fetchMessages(selectedChannel.id);
-      } else {
-        fetchMessages(selectedContact.id);
+      if (response.ok) {
+        setNewMessage('');
+        fetchMessages();
       }
+    } catch (error) {
+      console.error('Error sending message:', error);
     }
   };
 
   const createChannel = async () => {
-    const response = await fetch(`${API_URL}/api/create-group/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken(),
-      },
-      body: JSON.stringify({ name: newChannelName }),
-      credentials: 'include',
-    });
+    try {
+      const response = await fetch(`${API_URL}/api/create-group/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({ name: newChannelName }),
+        credentials: 'include',
+      });
 
-    if (response.ok) {
-      fetchChannels();
-      setIsNewChannelModalOpen(false);
-      setNewChannelName('');
+      if (response.ok) {
+        fetchChannels();
+        setIsNewChannelModalOpen(false);
+        setNewChannelName('');
+      }
+    } catch (error) {
+      console.error('Error creating channel:', error);
     }
   };
 
@@ -174,7 +204,10 @@ const SphereConnect = () => {
               <li 
                 key={channel.id}
                 className={`cursor-pointer p-2 rounded ${selectedChannel?.id === channel.id ? 'bg-indigo-600' : 'hover:bg-indigo-600'}`}
-                onClick={() => setSelectedChannel(channel)}
+                onClick={() => {
+                  setSelectedChannel(channel);
+                  setSelectedContact(null);
+                }}
               >
                 <Hash className="inline-block mr-2" size={16} />
                 {channel.name}
@@ -197,17 +230,23 @@ const SphereConnect = () => {
           </h1>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
-          {messages.map(message => (
-            <div key={message.id} className={`mb-4 ${message.sender === user.email ? 'text-right' : 'text-left'}`}>
-              <div className={`inline-block p-2 rounded-lg ${message.sender === user.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
-                <p className="font-semibold">{message.sender}</p>
-                <p>{message.content}</p>
-                <p className="text-xs mt-1 opacity-75">
-                  {new Date(message.timestamp).toLocaleString()}
-                </p>
-              </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-full">
+              <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
             </div>
-          ))}
+          ) : (
+            messages.map(message => (
+              <div key={message.id} className={`mb-4 ${message.sender === user.email ? 'text-right' : 'text-left'}`}>
+                <div className={`inline-block p-2 rounded-lg ${message.sender === user.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
+                  <p className="font-semibold">{message.sender}</p>
+                  <p>{message.content}</p>
+                  <p className="text-xs mt-1 opacity-75">
+                    {new Date(message.timestamp).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
           <div ref={messagesEndRef} />
         </div>
         <div className="bg-white p-4 border-t border-gray-200">
@@ -260,7 +299,6 @@ const SphereConnect = () => {
                     onClick={() => {
                       setSelectedContact(contact);
                       setSelectedChannel(null);
-                      fetchMessages(contact.id);
                     }}
                   >
                     <img 

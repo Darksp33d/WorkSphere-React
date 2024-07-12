@@ -55,25 +55,33 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [slackMessages, setSlackMessages] = useState([]);
   const [sphereConnectMessages, setSphereConnectMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
-      const [slackResponse, sphereConnectResponse] = await Promise.all([
-        fetch(`${API_URL}/api/get-unread-slack-messages/`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/get-unread-sphereconnect-messages/`, { credentials: 'include' })
-      ]);
+      setIsLoading(true);
+      try {
+        const [slackResponse, sphereConnectResponse] = await Promise.all([
+          fetch(`${API_URL}/api/get-unread-slack-messages/`, { credentials: 'include' }),
+          fetch(`${API_URL}/api/get-unread-sphereconnect-messages/`, { credentials: 'include' })
+        ]);
 
-      const [slackData, sphereConnectData] = await Promise.all([
-        slackResponse.json(),
-        sphereConnectResponse.json()
-      ]);
+        const [slackData, sphereConnectData] = await Promise.all([
+          slackResponse.json(),
+          sphereConnectResponse.json()
+        ]);
 
-      if (slackData.messages) {
-        setSlackMessages(slackData.messages.slice(0, 3));
-      }
+        if (slackData.messages) {
+          setSlackMessages(slackData.messages.slice(0, 3));
+        }
 
-      if (sphereConnectData.messages) {
-        setSphereConnectMessages(sphereConnectData.messages.slice(0, 3));
+        if (sphereConnectData.messages) {
+          setSphereConnectMessages(sphereConnectData.messages.slice(0, 3));
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -116,16 +124,20 @@ const Dashboard = () => {
         window.location.href = `https://slack.com/app_redirect?channel=${notification.channel}&message=${notification.id}`;
         break;
       case 'sphereconnect':
-        await fetch(`${API_URL}/api/mark-group-message-read/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken(),
-          },
-          body: JSON.stringify({ message_id: notification.id }),
-          credentials: 'include',
-        });
-        navigate('/messaging', { state: { selectedMessageId: notification.id, groupId: notification.groupId } });
+        try {
+          await fetch(`${API_URL}/api/mark-sphereconnect-message-read/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({ message_id: notification.id }),
+            credentials: 'include',
+          });
+          navigate('/messaging', { state: { selectedMessageId: notification.id, groupId: notification.groupId } });
+        } catch (error) {
+          console.error('Error marking SphereConnect message as read:', error);
+        }
         break;
       default:
         break;
@@ -143,7 +155,7 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-      >
+>
         Welcome back, {user?.first_name || 'User'}!
       </motion.h1>
       
@@ -157,15 +169,23 @@ const Dashboard = () => {
           </div>
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Notifications</h2>
-            {allNotifications.map((notification, index) => (
-              <NotificationPreview 
-                key={`${notification.type}-${notification.id}`}
-                notification={notification}
-                onClick={() => handleNotificationClick(notification)}
-              />
-            ))}
-            {allNotifications.length === 0 && (
-              <p className="text-center text-gray-500">No unread notifications</p>
+            {isLoading ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : (
+              <>
+                {allNotifications.map((notification, index) => (
+                  <NotificationPreview 
+                    key={`${notification.type}-${notification.id}`}
+                    notification={notification}
+                    onClick={() => handleNotificationClick(notification)}
+                  />
+                ))}
+                {allNotifications.length === 0 && (
+                  <p className="text-center text-gray-500">No unread notifications</p>
+                )}
+              </>
             )}
             <motion.button
               className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"

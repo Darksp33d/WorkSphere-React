@@ -17,7 +17,7 @@ const NotificationItem = ({ notification, onDismiss, onClick }) => (
     transition={{ type: "spring", stiffness: 500, damping: 30 }}
     onClick={onClick}
   >
-    {notification.type === 'email' && <Mail className="text-blue-600 mr-4 flex-shrink-0" size={24} />}
+{notification.type === 'email' && <Mail className="text-blue-600 mr-4 flex-shrink-0" size={24} />}
     {notification.type === 'slack' && <Slack className="text-green-600 mr-4 flex-shrink-0" size={24} />}
     {notification.type === 'sphereconnect' && <Hash className="text-purple-600 mr-4 flex-shrink-0" size={24} />}
     <div className="flex-grow">
@@ -105,7 +105,7 @@ const NotificationsHub = () => {
         window.location.href = `https://slack.com/app_redirect?channel=${notification.channel}&message=${notification.id}`;
         break;
       case 'sphereconnect':
-        await fetch(`${API_URL}/api/mark-group-message-read/`, {
+        await fetch(`${API_URL}/api/mark-sphereconnect-message-read/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -132,25 +132,28 @@ const NotificationsHub = () => {
         // Implement Slack message marking as read if applicable
         break;
       case 'sphereconnect':
-        endpoint = `${API_URL}/api/mark-group-message-read/`;
+        endpoint = `${API_URL}/api/mark-sphereconnect-message-read/`;
         break;
       default:
         return;
     }
 
     if (endpoint) {
-      await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
-        },
-        body: JSON.stringify({ message_id: notificationId }),
-        credentials: 'include',
-      });
+      try {
+        await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          },
+          body: JSON.stringify({ message_id: notificationId }),
+          credentials: 'include',
+        });
+        setNotifications(notifications.filter(n => n.id !== notificationId));
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
     }
-
-    setNotifications(notifications.filter(n => n.id !== notificationId));
   };
 
   const getCsrfToken = () => {
