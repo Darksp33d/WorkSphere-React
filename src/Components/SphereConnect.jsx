@@ -309,7 +309,7 @@ const SphereConnect = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className={`mb-4 ${message.sender === user.email ? 'self-end' : 'self-start'}`}
+                    className={`mb-4 ${message.sender.email === user.email ? 'self-end' : 'self-start'}`}
                   >
                     <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${message.sender.email === user.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
                       <p className="font-semibold text-sm">{message.sender.name}</p>
