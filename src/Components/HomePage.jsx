@@ -18,41 +18,29 @@ const Input = ({ className, ...props }) => (
 );
 
 const HomePage = () => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const navigate = useNavigate();
-  
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/login/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-              username: username,
-              password: password
-            }),
-            credentials: 'include',
-          });
-      
-          const data = await response.json();
-      
-          if (response.ok) {
-            navigate('/dashboard');
-          } else {
-            setError(data.message || 'Login failed');
-          }
-        } catch (error) {
-          console.error('Login error:', error);
-          setError('An error occurred. Please try again.');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { login } = useAuth(); // Use the login function from AuthContext
+
+  const handleLogin = async (e) => {
+      e.preventDefault();
+      try {
+        const success = await login(email, password);
+        if (success) {
+          navigate('/dashboard');
+        } else {
+          setError('Login failed. Please check your credentials.');
         }
-      };
+      } catch (error) {
+        console.error('Login error:', error);
+        setError('An error occurred. Please try again.');
+      }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex flex-col items-center justify-center p-4 md:p-8 font-sans">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex flex-col items-center justify-center p-4 md:p-8 font-sans">
       <div className="w-full max-w-4xl">
         <header className="text-center mb-12">
           <h1 className="text-5xl font-bold text-indigo-900 mb-2">WorkSphere</h1>
@@ -65,13 +53,13 @@ const HomePage = () => {
             {error && <p className="text-red-500 mb-4">{error}</p>}
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <Input 
-                  id="username" 
-                  type="text" 
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Your username" 
+                  id="email" 
+                  type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Your email" 
                 />
               </div>
               <div>

@@ -31,33 +31,42 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    setLoading(true);
-    const response = await fetch(`${process.env.REACT_APP_API_URL}/api/login/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-      credentials: 'include',
-    });
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/login/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
 
-    const data = await response.json();
-    if (data.success) {
-      setUser(data.user);
-    } else {
+      const data = await response.json();
+      if (data.success) {
+        setUser(data.user);
+        return true;
+      } else {
+        setUser(null);
+        return false;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
       setUser(null);
+      return false;
     }
-    setLoading(false);
   };
 
   const logout = async () => {
-    setLoading(true);
-    await fetch(`${process.env.REACT_APP_API_URL}/api/logout/`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    setUser(null);
-    setLoading(false);
+    try {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/logout/`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
