@@ -100,6 +100,7 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-groups/`, { credentials: 'include' });
       const data = await response.json();
+      console.log('Fetched channels:', data);
       setChannels(data.groups || []);
     } catch (error) {
       console.error('Error fetching channels:', error);
@@ -113,6 +114,7 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-contacts/`, { credentials: 'include' });
       const data = await response.json();
+      console.log('Fetched contacts:', data);
       setContacts(data.contacts || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -126,6 +128,7 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-private-chats/`, { credentials: 'include' });
       const data = await response.json();
+      console.log('Fetched private chats:', data);
       setPrivateChats(data.private_chats || []);
     } catch (error) {
       console.error('Error fetching private chats:', error);
@@ -143,6 +146,7 @@ const SphereConnect = () => {
       
       const response = await fetch(endpoint, { credentials: 'include' });
       const data = await response.json();
+      console.log('Fetched messages:', data);
       setMessages(data.messages || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -214,7 +218,7 @@ const SphereConnect = () => {
   };
 
   const startChat = () => {
-    setSelectedContact(selectedUser);
+    setSelectedContact(selectedUser || {});  // Provide a default empty object
     setSelectedChannel(null);
     setUserCardOpen(false);
   };
@@ -261,7 +265,7 @@ const SphereConnect = () => {
                     key={chat}
                     className={`cursor-pointer p-2 rounded ${selectedContact?.email === chat ? 'bg-indigo-600' : 'hover:bg-indigo-600'} transition-colors duration-200`}
                     onClick={() => {
-                      setSelectedContact(contacts.find(c => c.email === chat));
+                      setSelectedContact(contacts.find(c => c.email === chat) || {});  // Provide a default empty object
                       setSelectedChannel(null);
                     }}
                   >
@@ -350,7 +354,7 @@ const SphereConnect = () => {
           {isRightSidebarOpen && <h2 className="text-xl font-bold">Contacts</h2>}
           <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className="p-2 rounded hover:bg-gray-200">
             {isRightSidebarOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-            </button>
+          </button>
         </div>
         {isRightSidebarOpen && (
           <>
