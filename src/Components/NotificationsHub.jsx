@@ -6,7 +6,7 @@ import { useEmail } from '../Contexts/EmailContext';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const NotificationItem = ({ notification, onDismiss }) => (
+const NotificationItem = ({ notification, onDismiss, onClick }) => (
   <motion.div 
     className="flex items-center p-4 bg-white rounded-lg shadow-md mb-4 cursor-pointer"
     whileHover={{ scale: 1.02 }}
@@ -15,6 +15,7 @@ const NotificationItem = ({ notification, onDismiss }) => (
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -20 }}
     transition={{ type: "spring", stiffness: 500, damping: 30 }}
+    onClick={onClick}
   >
     {notification.type === 'email' && <Mail className="text-blue-600 mr-4 flex-shrink-0" size={24} />}
     {notification.type === 'slack' && <Slack className="text-green-600 mr-4 flex-shrink-0" size={24} />}
@@ -27,7 +28,7 @@ const NotificationItem = ({ notification, onDismiss }) => (
     <button 
       onClick={(e) => {
         e.stopPropagation();
-        onDismiss(notification.id);
+        onDismiss(notification.id, notification.type);
       }}
       className="ml-2 p-1 rounded-full hover:bg-gray-200 transition-colors duration-200"
     >
@@ -83,7 +84,8 @@ const NotificationsHub = () => {
         type: 'sphereconnect',
         source: 'SphereConnect',
         message: `New message in ${msg.channel_name}: ${msg.content}`,
-        time: new Date(msg.timestamp).toLocaleString()
+        time: new Date(msg.timestamp).toLocaleString(),
+        groupId: msg.group_id
       })) : [];
 
       setNotifications([...emailNotifications, ...slackNotifications, ...sphereConnectNotifications]);
@@ -94,7 +96,7 @@ const NotificationsHub = () => {
     }
   };
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
     switch (notification.type) {
       case 'email':
         navigate('/email', { state: { selectedEmailId: notification.id } });
@@ -103,17 +105,56 @@ const NotificationsHub = () => {
         window.location.href = `https://slack.com/app_redirect?channel=${notification.channel}&message=${notification.id}`;
         break;
       case 'sphereconnect':
-        navigate('/messaging', { state: { selectedMessageId: notification.id } });
+        await fetch(`${API_URL}/api/mark-group-message-read/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          },
+          body: JSON.stringify({ message_id: notification.id }),
+          credentials: 'include',
+        });
+        navigate('/messaging', { state: { selectedMessageId: notification.id, groupId: notification.groupId } });
         break;
       default:
         break;
     }
+    handleDismiss(notification.id, notification.type);
   };
 
-  const handleDismiss = async (notificationId) => {
-    // In a real application, you would call an API to mark the notification as read
-    // For now, we'll just remove it from the local state
+  const handleDismiss = async (notificationId, notificationType) => {
+    let endpoint;
+    switch (notificationType) {
+      case 'email':
+        endpoint = `${API_URL}/api/mark-email-read/`;
+        break;
+      case 'slack':
+        // Implement Slack message marking as read if applicable
+        break;
+      case 'sphereconnect':
+        endpoint = `${API_URL}/api/mark-group-message-read/`;
+        break;
+      default:
+        return;
+    }
+
+    if (endpoint) {
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({ message_id: notificationId }),
+        credentials: 'include',
+      });
+    }
+
     setNotifications(notifications.filter(n => n.id !== notificationId));
+  };
+
+  const getCsrfToken = () => {
+    return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
   };
 
   const filteredNotifications = notifications.filter(notification => {

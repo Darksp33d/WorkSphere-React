@@ -60,7 +60,7 @@ const Dashboard = () => {
     async function fetchData() {
       const [slackResponse, sphereConnectResponse] = await Promise.all([
         fetch(`${API_URL}/api/get-unread-slack-messages/`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/get-recent-messages/`, { credentials: 'include' })
+        fetch(`${API_URL}/api/get-unread-sphereconnect-messages/`, { credentials: 'include' })
       ]);
 
       const [slackData, sphereConnectData] = await Promise.all([
@@ -102,11 +102,12 @@ const Dashboard = () => {
       type: 'sphereconnect',
       source: 'SphereConnect',
       message: `${message.sender}: ${message.content}`,
-      time: new Date(message.timestamp).toLocaleString()
+      time: new Date(message.timestamp).toLocaleString(),
+      groupId: message.group_id
     }))
   ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
     switch (notification.type) {
       case 'email':
         navigate('/email', { state: { selectedEmailId: notification.id } });
@@ -115,11 +116,24 @@ const Dashboard = () => {
         window.location.href = `https://slack.com/app_redirect?channel=${notification.channel}&message=${notification.id}`;
         break;
       case 'sphereconnect':
-        navigate('/messaging', { state: { selectedMessageId: notification.id } });
+        await fetch(`${API_URL}/api/mark-group-message-read/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          },
+          body: JSON.stringify({ message_id: notification.id }),
+          credentials: 'include',
+        });
+        navigate('/messaging', { state: { selectedMessageId: notification.id, groupId: notification.groupId } });
         break;
       default:
         break;
     }
+  };
+
+  const getCsrfToken = () => {
+    return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
   };
 
   return (
