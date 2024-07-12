@@ -307,7 +307,7 @@ const SphereConnect = () => {
               <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
             </div>
           ) : (
-            <div className="flex flex-col-reverse">
+            <div className="flex flex-col">
               <AnimatePresence>
                 {messages.map(message => (
                   <motion.div
@@ -318,7 +318,11 @@ const SphereConnect = () => {
                     transition={{ duration: 0.3 }}
                     className={`mb-4 ${message.sender?.email === user?.email ? 'self-end' : 'self-start'}`}
                   >
-                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${message.sender?.email === user?.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
+                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${
+                      message.sender?.email === user?.email 
+                        ? 'bg-purple-300 text-gray-800 ml-auto' 
+                        : 'bg-gray-200 text-gray-800'
+                    }`}>
                       <p className="font-semibold text-sm">{message.sender?.name || 'Unknown'}</p>
                       <p className="mt-1">{message.content}</p>
                       <p className="text-xs mt-1 opacity-75">
