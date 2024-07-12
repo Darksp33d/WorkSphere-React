@@ -100,7 +100,7 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-groups/`, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched channels:', data);
+      console.log('Fetched channels:', data);  // Add this line
       setChannels(data.groups || []);
     } catch (error) {
       console.error('Error fetching channels:', error);
@@ -114,7 +114,7 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-contacts/`, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched contacts:', data);
+      console.log('Fetched contacts:', data);  // Add this line
       setContacts(data.contacts || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -128,7 +128,7 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-private-chats/`, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched private chats:', data);
+      console.log('Fetched private chats:', data);  // Add this line
       setPrivateChats(data.private_chats || []);
     } catch (error) {
       console.error('Error fetching private chats:', error);
@@ -146,7 +146,7 @@ const SphereConnect = () => {
       
       const response = await fetch(endpoint, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched messages:', data);
+      console.log('Fetched messages:', data);  // Add this line
       setMessages(data.messages || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -265,7 +265,8 @@ const SphereConnect = () => {
                     key={chat}
                     className={`cursor-pointer p-2 rounded ${selectedContact?.email === chat ? 'bg-indigo-600' : 'hover:bg-indigo-600'} transition-colors duration-200`}
                     onClick={() => {
-                      setSelectedContact(contacts.find(c => c.email === chat) || {});  // Provide a default empty object
+                      const contact = contacts.find(c => c.email === chat);
+                      setSelectedContact(contact || {});  // Provide a default empty object
                       setSelectedChannel(null);
                     }}
                   >
