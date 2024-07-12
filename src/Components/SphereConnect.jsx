@@ -124,10 +124,9 @@ const SphereConnect = () => {
   const fetchPrivateChats = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/get-private-messages/`, { credentials: 'include' });
+      const response = await fetch(`${API_URL}/api/get-private-chats/`, { credentials: 'include' });
       const data = await response.json();
-      const uniqueChats = [...new Set(data.messages.map(msg => msg.sender === user.email ? msg.recipient : msg.sender))];
-      setPrivateChats(uniqueChats);
+      setPrivateChats(data.private_chats || []);
     } catch (error) {
       console.error('Error fetching private chats:', error);
     } finally {
@@ -139,7 +138,7 @@ const SphereConnect = () => {
     setIsLoading(true);
     try {
       const endpoint = selectedContact
-        ? `${API_URL}/api/get-private-messages/`
+        ? `${API_URL}/api/get-private-messages/?user_id=${selectedContact.id}`
         : `${API_URL}/api/get-group-messages/${selectedChannel.id}/`;
       
       const response = await fetch(endpoint, { credentials: 'include' });
