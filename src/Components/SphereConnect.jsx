@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../Contexts/AuthContext';
-import { Send, Users, Hash, Plus, Search, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, Users, Hash, Plus, Search, X, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -46,6 +46,11 @@ const SphereConnect = () => {
   const [newChannelName, setNewChannelName] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  const [privateChats, setPrivateChats] = useState([]);
+  const [userCardOpen, setUserCardOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,6 +58,7 @@ const SphereConnect = () => {
   useEffect(() => {
     fetchChannels();
     fetchContacts();
+    fetchPrivateChats();
   }, []);
 
   useEffect(() => {
@@ -110,6 +116,20 @@ const SphereConnect = () => {
       setContacts(data.contacts || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchPrivateChats = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/get-private-messages/`, { credentials: 'include' });
+      const data = await response.json();
+      const uniqueChats = [...new Set(data.messages.map(msg => msg.sender === user.email ? msg.recipient : msg.sender))];
+      setPrivateChats(uniqueChats);
+    } catch (error) {
+      console.error('Error fetching private chats:', error);
     } finally {
       setIsLoading(false);
     }
@@ -189,40 +209,81 @@ const SphereConnect = () => {
     return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
   };
 
+  const handleContactClick = (contact) => {
+    setSelectedUser(contact);
+    setUserCardOpen(true);
+  };
+
+  const startChat = () => {
+    setSelectedContact(selectedUser);
+    setSelectedChannel(null);
+    setUserCardOpen(false);
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
-      <div className="w-64 bg-indigo-700 text-white p-4">
+      {/* Left Sidebar */}
+      <motion.div 
+        className={`bg-indigo-700 text-white p-4 ${isLeftSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out`}
+        initial={false}
+        animate={{ width: isLeftSidebarOpen ? 256 : 64 }}
+      >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Channels</h2>
-          <button onClick={() => setIsChannelsOpen(!isChannelsOpen)}>
-            {isChannelsOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          {isLeftSidebarOpen && <h2 className="text-xl font-bold">Channels</h2>}
+          <button onClick={() => setIsLeftSidebarOpen(!isLeftSidebarOpen)} className="p-2 rounded hover:bg-indigo-600">
+            {isLeftSidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
           </button>
         </div>
-        {isChannelsOpen && (
-          <ul className="space-y-2">
-            {channels.map(channel => (
-              <li 
-                key={channel.id}
-                className={`cursor-pointer p-2 rounded ${selectedChannel?.id === channel.id ? 'bg-indigo-600' : 'hover:bg-indigo-600'}`}
-                onClick={() => {
-                  setSelectedChannel(channel);
-                  setSelectedContact(null);
-                }}
-              >
-                <Hash className="inline-block mr-2" size={16} />
-                {channel.name}
-              </li>
-            ))}
-          </ul>
+        {isLeftSidebarOpen && (
+          <>
+            <div className="mb-4">
+              <h3 className="font-semibold mb-2">Group Chats</h3>
+              <ul className="space-y-2">
+                {channels.map(channel => (
+                  <li 
+                    key={channel.id}
+                    className={`cursor-pointer p-2 rounded ${selectedChannel?.id === channel.id ? 'bg-indigo-600' : 'hover:bg-indigo-600'} transition-colors duration-200`}
+                    onClick={() => {
+                      setSelectedChannel(channel);
+                      setSelectedContact(null);
+                    }}
+                  >
+                    <Hash className="inline-block mr-2" size={16} />
+                    {channel.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">Private Chats</h3>
+              <ul className="space-y-2">
+                {privateChats.map(chat => (
+                  <li 
+                    key={chat}
+                    className={`cursor-pointer p-2 rounded ${selectedContact?.email === chat ? 'bg-indigo-600' : 'hover:bg-indigo-600'} transition-colors duration-200`}
+                    onClick={() => {
+                      setSelectedContact(contacts.find(c => c.email === chat));
+                      setSelectedChannel(null);
+                    }}
+                  >
+                    <MessageSquare className="inline-block mr-2" size={16} />
+                    {chat}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <button 
+              className="mt-4 w-full p-2 bg-indigo-500 rounded hover:bg-indigo-600 transition-colors duration-200"
+              onClick={() => setIsNewChannelModalOpen(true)}
+            >
+              <Plus className="inline-block mr-2" size={16} />
+              New Channel
+            </button>
+          </>
         )}
-        <button 
-          className="mt-4 w-full p-2 bg-indigo-500 rounded hover:bg-indigo-600 transition-colors duration-200"
-          onClick={() => setIsNewChannelModalOpen(true)}
-        >
-          <Plus className="inline-block mr-2" size={16} />
-          New Channel
-        </button>
-      </div>
+      </motion.div>
+
+      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         <div className="bg-white p-4 border-b border-gray-200">
           <h1 className="text-2xl font-bold">
@@ -235,17 +296,28 @@ const SphereConnect = () => {
               <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
             </div>
           ) : (
-            messages.map(message => (
-              <div key={message.id} className={`mb-4 ${message.sender === user.email ? 'text-right' : 'text-left'}`}>
-                <div className={`inline-block p-2 rounded-lg ${message.sender === user.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
-                  <p className="font-semibold">{message.sender}</p>
-                  <p>{message.content}</p>
-                  <p className="text-xs mt-1 opacity-75">
-                    {new Date(message.timestamp).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            ))
+            <div className="flex flex-col-reverse">
+              <AnimatePresence>
+                {messages.map(message => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className={`mb-4 ${message.sender === user.email ? 'self-end' : 'self-start'}`}
+                  >
+                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${message.sender === user.email ? 'bg-indigo-500 text-white' : 'bg-gray-200'}`}>
+                      <p className="font-semibold text-sm">{message.sender}</p>
+                      <p className="mt-1">{message.content}</p>
+                      <p className="text-xs mt-1 opacity-75">
+                        {new Date(message.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -261,21 +333,27 @@ const SphereConnect = () => {
             />
             <button 
               onClick={sendMessage}
-              className="px-4 py-2 bg-indigo-500 text-white rounded-r-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-4 py-2 bg-indigo-500 text-white rounded-r-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
             >
               <Send size={20} />
             </button>
           </div>
         </div>
       </div>
-      <div className="w-64 bg-white p-4 border-l border-gray-200">
+
+      {/* Right Sidebar */}
+      <motion.div 
+        className={`bg-white p-4 border-l border-gray-200 ${isRightSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out`}
+        initial={false}
+        animate={{ width: isRightSidebarOpen ? 256 : 64 }}
+      >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Contacts</h2>
-          <button onClick={() => setIsContactsOpen(!isContactsOpen)}>
-            {isContactsOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </button>
+          {isRightSidebarOpen && <h2 className="text-xl font-bold">Contacts</h2>}
+          <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className="p-2 rounded hover:bg-gray-200">
+            {isRightSidebarOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            </button>
         </div>
-        {isContactsOpen && (
+        {isRightSidebarOpen && (
           <>
             <div className="relative mb-4">
               <input 
@@ -287,7 +365,7 @@ const SphereConnect = () => {
               />
               <Search className="absolute right-2 top-2 text-gray-400" size={20} />
             </div>
-            <ul className="space-y-2">
+            <ul className="space-y-2 overflow-y-auto max-h-[calc(100vh-200px)]">
               <AnimatePresence>
                 {filteredContacts.map(contact => (
                   <motion.li 
@@ -295,11 +373,8 @@ const SphereConnect = () => {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer"
-                    onClick={() => {
-                      setSelectedContact(contact);
-                      setSelectedChannel(null);
-                    }}
+                    className="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer transition-colors duration-200"
+                    onClick={() => handleContactClick(contact)}
                   >
                     <img 
                       src={contact.profile_picture || 'https://via.placeholder.com/40'} 
@@ -316,7 +391,9 @@ const SphereConnect = () => {
             </ul>
           </>
         )}
-      </div>
+      </motion.div>
+
+      {/* New Channel Modal */}
       <Modal
         isOpen={isNewChannelModalOpen}
         onClose={() => setIsNewChannelModalOpen(false)}
@@ -324,19 +401,44 @@ const SphereConnect = () => {
       >
         <input
           type="text"
-          className="w-full p-2 border border-gray-300 rounded mb-4"
+          className="w-full p-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="Channel name"
           value={newChannelName}
           onChange={(e) => setNewChannelName(e.target.value)}
         />
         <div className="flex justify-end">
           <button
-            className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+            className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-200"
             onClick={createChannel}
           >
             Create
           </button>
         </div>
+      </Modal>
+
+      {/* User Card Modal */}
+      <Modal
+        isOpen={userCardOpen}
+        onClose={() => setUserCardOpen(false)}
+        title="User Information"
+      >
+        {selectedUser && (
+          <div className="text-center">
+            <img 
+              src={selectedUser.profile_picture || 'https://via.placeholder.com/100'} 
+              alt={selectedUser.name} 
+              className="w-24 h-24 rounded-full mx-auto mb-4"
+            />
+            <h3 className="text-xl font-bold mb-2">{selectedUser.name}</h3>
+            <p className="text-gray-600 mb-4">{selectedUser.email}</p>
+            <button
+              className="w-full px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-200"
+              onClick={startChat}
+            >
+              Start Chat
+            </button>
+          </div>
+        )}
       </Modal>
     </div>
   );
