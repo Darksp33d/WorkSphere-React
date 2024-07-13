@@ -59,11 +59,13 @@ const SphereConnect = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const messagesEndRef = useRef(null);
   const location = useLocation();
+  const [csrfToken, setCsrfToken] = useState('');
 
   useEffect(() => {
     fetchChannels();
     fetchContacts();
     fetchPrivateChats();
+    fetchCsrfToken();
   }, []);
 
   useEffect(() => {
@@ -100,12 +102,24 @@ const SphereConnect = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await fetch(`${API_URL}/get-csrf-token/`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      setCsrfToken(data.csrfToken);
+    } catch (error) {
+      console.error('Error fetching CSRF token:', error);
+    }
+  };
+
   const fetchChannels = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/get-groups/`, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched channels:', data);  // Add this line
+      console.log('Fetched channels:', data);
       setChannels(data.groups || []);
     } catch (error) {
       console.error('Error fetching channels:', error);
@@ -119,7 +133,7 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-contacts/`, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched contacts:', data);  // Add this line
+      console.log('Fetched contacts:', data);
       setContacts(data.contacts || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -133,7 +147,7 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-private-chats/`, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched private chats:', data);  // Add this line
+      console.log('Fetched private chats:', data);
       setPrivateChats(data.private_chats || []);
     } catch (error) {
       console.error('Error fetching private chats:', error);
@@ -178,7 +192,7 @@ const SphereConnect = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
+          'X-CSRFToken': csrfToken,
         },
         body: JSON.stringify(body),
         credentials: 'include',
@@ -187,6 +201,8 @@ const SphereConnect = () => {
       if (response.ok) {
         setNewMessage('');
         fetchMessages();
+      } else {
+        console.error('Error sending message:', await response.text());
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -199,7 +215,7 @@ const SphereConnect = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken(),
+          'X-CSRFToken': csrfToken,
         },
         body: JSON.stringify({ name: newChannelName }),
         credentials: 'include',
@@ -209,14 +225,12 @@ const SphereConnect = () => {
         fetchChannels();
         setIsNewChannelModalOpen(false);
         setNewChannelName('');
+      } else {
+        console.error('Error creating channel:', await response.text());
       }
     } catch (error) {
       console.error('Error creating channel:', error);
     }
-  };
-
-  const getCsrfToken = () => {
-    return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
   };
 
   const handleContactClick = (contact) => {
@@ -225,7 +239,7 @@ const SphereConnect = () => {
   };
 
   const startChat = () => {
-    setSelectedContact(selectedUser || {});  // Provide a default empty object
+    setSelectedContact(selectedUser || {});
     setSelectedChannel(null);
     setUserCardOpen(false);
   };
@@ -316,14 +330,14 @@ const SphereConnect = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className={`mb-4 ${message.sender?.email === user?.email ? 'self-end' : 'self-start'}`}
+                    className={`mb-4 ${message.sender === user.first_name ? 'self-end' : 'self-start'}`}
                   >
                     <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${
-                      message.sender?.email === user?.email 
+                      message.sender === user.first_name 
                         ? 'bg-purple-300 text-gray-800 ml-auto' 
                         : 'bg-gray-200 text-gray-800'
                     }`}>
-                      <p className="font-semibold text-sm">{message.sender?.name || 'Unknown'}</p>
+                      <p className="font-semibold text-sm">{message.sender}</p>
                       <p className="mt-1">{message.content}</p>
                       <p className="text-xs mt-1 opacity-75">
                         {new Date(message.timestamp).toLocaleString()}
