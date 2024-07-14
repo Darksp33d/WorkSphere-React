@@ -154,7 +154,7 @@ const SphereConnect = () => {
     let source;
     if (selectedChannel || selectedContact) {
       source = new EventSource(`${API_URL}/api/events/?channel=${selectedChannel?.id || ''}&contact=${selectedContact?.id || ''}`, { withCredentials: true });
-      
+
       source.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'new_message') {
@@ -300,7 +300,6 @@ const SphereConnect = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setMessages((prevMessages) => [...prevMessages, data.message_data]);
         setNewMessage('');
       } else {
         console.error('Error sending message:', await response.text());
@@ -396,7 +395,7 @@ const SphereConnect = () => {
 
   const handleTyping = useCallback(
     debounce(() => {
-      if (selectedChannel || selectedContact) {
+      if ((selectedChannel || selectedContact) && newMessage.trim()) {
         fetch(`${API_URL}/api/user-typing/`, {
           method: 'POST',
           headers: {
@@ -412,16 +411,15 @@ const SphereConnect = () => {
         });
       }
     }, 300),
-    [selectedChannel, selectedContact, csrfToken]
+    [selectedChannel, selectedContact, csrfToken, newMessage]
   );
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-indigo-100 to-purple-100">
       {/* Left Sidebar */}
       <motion.div
-        className={`bg-gradient-to-b from-indigo-600 to-indigo-800 text-white p-6 ${
-          isLeftSidebarOpen ? 'w-72' : 'w-20'
-        } transition-all duration-300 ease-in-out shadow-lg`}
+        className={`bg-gradient-to-b from-indigo-600 to-indigo-800 text-white p-6 ${isLeftSidebarOpen ? 'w-72' : 'w-20'
+          } transition-all duration-300 ease-in-out shadow-lg`}
         initial={false}
         animate={{ width: isLeftSidebarOpen ? 288 : 80 }}
       >
@@ -445,9 +443,8 @@ const SphereConnect = () => {
                   <motion.li
                     key={channel.id}
                     whileHover={{ x: 5 }}
-                    className={`cursor-pointer p-2 rounded ${
-                      selectedChannel?.id === channel.id ? 'bg-indigo-500' : 'hover:bg-indigo-700'
-                    } transition-colors duration-200`}
+                    className={`cursor-pointer p-2 rounded ${selectedChannel?.id === channel.id ? 'bg-indigo-500' : 'hover:bg-indigo-700'
+                      } transition-colors duration-200`}
                     onClick={() => handleChannelClick(channel)}
                   >
                     <Hash className="inline-block mr-2" size={16} />
@@ -463,11 +460,10 @@ const SphereConnect = () => {
                   <motion.li
                     key={typeof chat === 'object' ? chat.id : chat}
                     whileHover={{ x: 5 }}
-                    className={`cursor-pointer p-2 rounded ${
-                      selectedContact?.email === (typeof chat === 'object' ? chat.email : chat)
+                    className={`cursor-pointer p-2 rounded ${selectedContact?.email === (typeof chat === 'object' ? chat.email : chat)
                         ? 'bg-indigo-500'
                         : 'hover:bg-indigo-700'
-                    } transition-colors duration-200`}
+                      } transition-colors duration-200`}
                     onClick={() => {
                       const contact = contacts.find(c => c.email === (typeof chat === 'object' ? chat.email : chat));
                       setSelectedContact(contact || {});
@@ -529,11 +525,10 @@ const SphereConnect = () => {
                     className={`flex ${message.sender === user.first_name ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg shadow-md ${
-                        message.sender === user.first_name
+                      className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg shadow-md ${message.sender === user.first_name
                           ? 'bg-indigo-100 text-indigo-800'
                           : 'bg-gray-100 text-gray-800'
-                      }`}
+                        }`}
                     >
                       <p className="font-semibold text-sm">{message.sender}</p>
                       <p className="mt-1">{message.content}</p>
@@ -551,14 +546,13 @@ const SphereConnect = () => {
         <div className="bg-white p-4 border-t border-gray-200">
           {Object.values(typingUsers).some(Boolean) && (
             <div className="text-sm text-gray-500 italic mb-2">
-              {Object.keys(typingUsers)
-                .filter(id => typingUsers[id])
-                .map(id => {
-                  const user = contacts.find(contact => contact.id === id);
-                  return user ? user.name : '';
+              {Object.entries(typingUsers)
+                .filter(([id, isTyping]) => isTyping && id !== user.id)
+                .map(([id]) => {
+                  const typingUser = contacts.find(contact => contact.id === parseInt(id));
+                  return typingUser ? typingUser.name : '';
                 })
-                .join(', ')}{' '}
-              is typing...
+                .join(', ')} {Object.values(typingUsers).filter(Boolean).length > 0 ? 'is typing...' : ''}
             </div>
           )}
           <div className="flex space-x-2">
@@ -587,9 +581,8 @@ const SphereConnect = () => {
 
       {/* Right Sidebar */}
       <motion.div
-        className={`bg-white p-6 border-l border-gray-200 ${
-          isRightSidebarOpen ? 'w-72' : 'w-20'
-        } transition-all duration-300 ease-in-out shadow-lg`}
+        className={`bg-white p-6 border-l border-gray-200 ${isRightSidebarOpen ? 'w-72' : 'w-20'
+          } transition-all duration-300 ease-in-out shadow-lg`}
         initial={false}
         animate={{ width: isRightSidebarOpen ? 288 : 80 }}
       >
