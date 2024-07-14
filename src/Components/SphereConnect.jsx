@@ -104,27 +104,27 @@ const SphereConnect = () => {
 
   useEffect(() => {
     if (selectedChannel || selectedContact) {
-      const source = new EventSource(`${API_URL}/api/events/?channel=${selectedChannel?.id || ''}&contact=${selectedContact?.id || ''}`);
-      
-      source.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'new_message') {
-          setMessages((prevMessages) => [...prevMessages, data.message]);
-        } else if (data.type === 'typing_status') {
-          setTypingUsers((prevTypingUsers) => ({
-            ...prevTypingUsers,
-            [data.user_id]: data.is_typing,
-          }));
-        }
-      };
+        const source = new EventSource(`${API_URL}/api/events/?channel=${selectedChannel?.id || ''}&contact=${selectedContact?.id || ''}`);
+        
+        source.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'new_message') {
+                setMessages((prevMessages) => [...prevMessages, data.message]);
+            } else if (data.type === 'typing_status') {
+                setTypingUsers((prevTypingUsers) => ({
+                    ...prevTypingUsers,
+                    [data.user_id]: data.is_typing,
+                }));
+            }
+        };
 
-      setEventSource(source);
+        setEventSource(source);
 
-      return () => {
-        source.close();
-      };
+        return () => {
+            source.close();
+        };
     }
-  }, [selectedChannel, selectedContact]);
+}, [selectedChannel, selectedContact]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
