@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../Contexts/AuthContext';
-import { Send, Users, Hash, Plus, Search, X, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Send, Users, Hash, Plus, Search, X, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight, Settings, UserPlus, UserMinus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { debounce } from 'lodash';
 
@@ -14,23 +14,70 @@ const Modal = ({ isOpen, onClose, title, children }) => (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm"
         onClick={onClose}
       >
         <motion.div
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -50, opacity: 0 }}
-          className="bg-white rounded-lg p-6 w-96"
+          className="bg-white rounded-lg p-6 w-96 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <h2 className="text-xl font-bold mb-4">{title}</h2>
+          <h2 className="text-2xl font-bold mb-4 text-indigo-800">{title}</h2>
           {children}
         </motion.div>
       </motion.div>
     )}
   </AnimatePresence>
 );
+
+const ChannelSettings = ({ channel, onClose, onAddMember, onRemoveMember }) => {
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title={`${channel.name} Settings`}>
+      <div className="space-y-6">
+        <h3 className="text-lg font-semibold text-indigo-700">Members</h3>
+        <ul className="space-y-3 max-h-60 overflow-y-auto">
+          {channel.members.map(member => (
+            <li key={member.id} className="flex items-center justify-between bg-gray-100 p-2 rounded-lg">
+              <span className="font-medium">{member.name}</span>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-200"
+                onClick={() => onRemoveMember(member.id)}
+              >
+                <UserMinus size={16} />
+              </motion.button>
+            </li>
+          ))}
+        </ul>
+        <div className="flex space-x-2">
+          <input
+            type="text"
+            className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="New member email"
+            value={newMemberEmail}
+            onChange={(e) => setNewMemberEmail(e.target.value)}
+          />
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200"
+            onClick={() => {
+              onAddMember(newMemberEmail);
+              setNewMemberEmail('');
+            }}
+          >
+            <UserPlus size={20} />
+          </motion.button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
 
 const SphereConnect = () => {
   const navigate = useNavigate();
@@ -56,6 +103,7 @@ const SphereConnect = () => {
   const [csrfToken, setCsrfToken] = useState('');
   const [typingUsers, setTypingUsers] = useState({});
   const [eventSource, setEventSource] = useState(null);
+  const [isChannelSettingsOpen, setIsChannelSettingsOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const location = useLocation();
 
@@ -105,38 +153,38 @@ const SphereConnect = () => {
   useEffect(() => {
     let source;
     if (selectedChannel || selectedContact) {
-        source = new EventSource(`${API_URL}/api/events/?channel=${selectedChannel?.id || ''}&contact=${selectedContact?.id || ''}`, { withCredentials: true });
-        
-        source.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'new_message') {
-                setMessages((prevMessages) => [...prevMessages, data.message]);
-            } else if (data.type === 'typing_status') {
-                setTypingUsers((prevTypingUsers) => ({
-                    ...prevTypingUsers,
-                    [data.user_id]: data.is_typing,
-                }));
-            }
-        };
+      source = new EventSource(`${API_URL}/api/events/?channel=${selectedChannel?.id || ''}&contact=${selectedContact?.id || ''}`, { withCredentials: true });
+      
+      source.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'new_message') {
+          setMessages((prevMessages) => [...prevMessages, data.message]);
+        } else if (data.type === 'typing_status') {
+          setTypingUsers((prevTypingUsers) => ({
+            ...prevTypingUsers,
+            [data.user_id]: data.is_typing,
+          }));
+        }
+      };
 
-        source.onerror = (error) => {
-            console.error('EventSource failed:', error);
-            source.close();
-            // Attempt to reconnect after a delay
-            setTimeout(() => {
-                setEventSource(null);
-            }, 5000);
-        };
+      source.onerror = (error) => {
+        console.error('EventSource failed:', error);
+        source.close();
+        // Attempt to reconnect after a delay
+        setTimeout(() => {
+          setEventSource(null);
+        }, 5000);
+      };
 
-        setEventSource(source);
+      setEventSource(source);
     }
 
     return () => {
-        if (source) {
-            source.close();
-        }
+      if (source) {
+        source.close();
+      }
     };
-}, [selectedChannel, selectedContact]);
+  }, [selectedChannel, selectedContact]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -158,8 +206,12 @@ const SphereConnect = () => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/get-groups/`, { credentials: 'include' });
-      const data = await response.json();
-      setChannels(data.groups || []);
+      if (response.ok) {
+        const data = await response.json();
+        setChannels(data.groups || []);
+      } else {
+        console.error('Error fetching channels:', await response.text());
+      }
     } catch (error) {
       console.error('Error fetching channels:', error);
     } finally {
@@ -171,8 +223,12 @@ const SphereConnect = () => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/get-contacts/`, { credentials: 'include' });
-      const data = await response.json();
-      setContacts(data.contacts || []);
+      if (response.ok) {
+        const data = await response.json();
+        setContacts(data.contacts || []);
+      } else {
+        console.error('Error fetching contacts:', await response.text());
+      }
     } catch (error) {
       console.error('Error fetching contacts:', error);
     } finally {
@@ -184,8 +240,12 @@ const SphereConnect = () => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/get-private-chats/`, { credentials: 'include' });
-      const data = await response.json();
-      setPrivateChats(data.private_chats || []);
+      if (response.ok) {
+        const data = await response.json();
+        setPrivateChats(data.private_chats || []);
+      } else {
+        console.error('Error fetching private chats:', await response.text());
+      }
     } catch (error) {
       console.error('Error fetching private chats:', error);
     } finally {
@@ -203,8 +263,12 @@ const SphereConnect = () => {
         : `${API_URL}/api/get-group-messages/${selectedChannel.id}/`;
 
       const response = await fetch(endpoint, { credentials: 'include' });
-      const data = await response.json();
-      setMessages(data.messages || []);
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data.messages || []);
+      } else {
+        console.error('Error fetching messages:', await response.text());
+      }
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
@@ -235,8 +299,9 @@ const SphereConnect = () => {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        setMessages((prevMessages) => [...prevMessages, data.message_data]);
         setNewMessage('');
-        fetchMessages();
       } else {
         console.error('Error sending message:', await response.text());
       }
@@ -280,9 +345,12 @@ const SphereConnect = () => {
     setUserCardOpen(false);
   };
 
-  const addUserToChannel = async (userId) => {
-    if (!selectedChannel) return;
+  const handleChannelClick = (channel) => {
+    setSelectedChannel(channel);
+    setSelectedContact(null);
+  };
 
+  const handleAddMember = async (email) => {
     try {
       const response = await fetch(`${API_URL}/api/add-user-to-channel/`, {
         method: 'POST',
@@ -290,7 +358,7 @@ const SphereConnect = () => {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrfToken,
         },
-        body: JSON.stringify({ group_id: selectedChannel.id, user_id: userId }),
+        body: JSON.stringify({ group_id: selectedChannel.id, email }),
         credentials: 'include',
       });
 
@@ -304,9 +372,7 @@ const SphereConnect = () => {
     }
   };
 
-  const removeUserFromChannel = async (userId) => {
-    if (!selectedChannel) return;
-
+  const handleRemoveMember = async (userId) => {
     try {
       const response = await fetch(`${API_URL}/api/remove-user-from-channel/`, {
         method: 'POST',
@@ -350,46 +416,58 @@ const SphereConnect = () => {
   );
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gradient-to-br from-indigo-100 to-purple-100">
       {/* Left Sidebar */}
       <motion.div
-        className={`bg-indigo-700 text-white p-4 ${isLeftSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out`}
+        className={`bg-gradient-to-b from-indigo-600 to-indigo-800 text-white p-6 ${
+          isLeftSidebarOpen ? 'w-72' : 'w-20'
+        } transition-all duration-300 ease-in-out shadow-lg`}
         initial={false}
-        animate={{ width: isLeftSidebarOpen ? 256 : 64 }}
+        animate={{ width: isLeftSidebarOpen ? 288 : 80 }}
       >
-        <div className="flex items-center justify-between mb-4">
-          {isLeftSidebarOpen && <h2 className="text-xl font-bold">Channels</h2>}
-          <button onClick={() => setIsLeftSidebarOpen(!isLeftSidebarOpen)} className="p-2 rounded hover:bg-indigo-600">
-            {isLeftSidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-          </button>
+        <div className="flex items-center justify-between mb-6">
+          {isLeftSidebarOpen && <h2 className="text-2xl font-bold">Channels</h2>}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsLeftSidebarOpen(!isLeftSidebarOpen)}
+            className="p-2 rounded hover:bg-indigo-500 transition-colors duration-200"
+          >
+            {isLeftSidebarOpen ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
+          </motion.button>
         </div>
         {isLeftSidebarOpen && (
           <>
-            <div className="mb-4">
-              <h3 className="font-semibold mb-2">Group Chats</h3>
+            <div className="mb-6">
+              <h3 className="font-semibold mb-2 text-indigo-200">Group Chats</h3>
               <ul className="space-y-2">
                 {channels.map(channel => (
-                  <li
+                  <motion.li
                     key={channel.id}
-                    className={`cursor-pointer p-2 rounded ${selectedChannel?.id === channel.id ? 'bg-indigo-600' : 'hover:bg-indigo-600'} transition-colors duration-200`}
-                    onClick={() => {
-                      setSelectedChannel(channel);
-                      setSelectedContact(null);
-                    }}
+                    whileHover={{ x: 5 }}
+                    className={`cursor-pointer p-2 rounded ${
+                      selectedChannel?.id === channel.id ? 'bg-indigo-500' : 'hover:bg-indigo-700'
+                    } transition-colors duration-200`}
+                    onClick={() => handleChannelClick(channel)}
                   >
                     <Hash className="inline-block mr-2" size={16} />
                     {channel.name}
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">Private Chats</h3>
+              <h3 className="font-semibold mb-2 text-indigo-200">Private Chats</h3>
               <ul className="space-y-2">
                 {privateChats.map(chat => (
-                  <li
+                  <motion.li
                     key={typeof chat === 'object' ? chat.id : chat}
-                    className={`cursor-pointer p-2 rounded ${selectedContact?.email === (typeof chat === 'object' ? chat.email : chat) ? 'bg-indigo-600' : 'hover:bg-indigo-600'} transition-colors duration-200`}
+                    whileHover={{ x: 5 }}
+                    className={`cursor-pointer p-2 rounded ${
+                      selectedContact?.email === (typeof chat === 'object' ? chat.email : chat)
+                        ? 'bg-indigo-500'
+                        : 'hover:bg-indigo-700'
+                    } transition-colors duration-200`}
                     onClick={() => {
                       const contact = contacts.find(c => c.email === (typeof chat === 'object' ? chat.email : chat));
                       setSelectedContact(contact || {});
@@ -398,35 +476,48 @@ const SphereConnect = () => {
                   >
                     <MessageSquare className="inline-block mr-2" size={16} />
                     {typeof chat === 'object' ? chat.email : chat}
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             </div>
-            <button
-              className="mt-4 w-full p-2 bg-indigo-500 rounded hover:bg-indigo-600 transition-colors duration-200"
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="mt-6 w-full p-2 bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-colors duration-200 flex items-center justify-center space-x-2"
               onClick={() => setIsNewChannelModalOpen(true)}
             >
-              <Plus className="inline-block mr-2" size={16} />
-              New Channel
-            </button>
+              <Plus size={20} />
+              <span>New Channel</span>
+            </motion.button>
           </>
         )}
       </motion.div>
 
-{/* Main Chat Area */}
-<div className="flex-1 flex flex-col">
-        <div className="bg-white p-4 border-b border-gray-200">
-          <h1 className="text-2xl font-bold">
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
+        <div className="bg-white p-6 border-b border-gray-200 flex justify-between items-center shadow-sm">
+          <h1 className="text-2xl font-bold text-indigo-800">
             {selectedChannel ? `#${selectedChannel.name}` : (selectedContact ? `${selectedContact.name}` : 'Select a channel or contact')}
           </h1>
+          {selectedChannel && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors duration-200 flex items-center space-x-2 shadow-md"
+              onClick={() => setIsChannelSettingsOpen(true)}
+            >
+              <Settings size={20} />
+              <span>Channel Settings</span>
+            </motion.button>
+          )}
         </div>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-6 bg-white">
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
-              <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-indigo-500"></div>
             </div>
           ) : (
-            <div className="flex flex-col">
+            <div className="flex flex-col space-y-4">
               <AnimatePresence>
                 {messages.map(message => (
                   <motion.div
@@ -435,13 +526,15 @@ const SphereConnect = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className={`mb-4 ${message.sender === user.first_name ? 'self-end' : 'self-start'}`}
+                    className={`flex ${message.sender === user.first_name ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg ${
-                      message.sender === user.first_name 
-                        ? 'bg-purple-300 text-gray-800 ml-auto' 
-                        : 'bg-gray-200 text-gray-800'
-                    }`}>
+                    <div
+                      className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg shadow-md ${
+                        message.sender === user.first_name
+                          ? 'bg-indigo-100 text-indigo-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       <p className="font-semibold text-sm">{message.sender}</p>
                       <p className="mt-1">{message.content}</p>
                       <p className="text-xs mt-1 opacity-75">
@@ -458,16 +551,20 @@ const SphereConnect = () => {
         <div className="bg-white p-4 border-t border-gray-200">
           {Object.values(typingUsers).some(Boolean) && (
             <div className="text-sm text-gray-500 italic mb-2">
-              {Object.keys(typingUsers).filter(id => typingUsers[id]).map(id => {
-                const user = contacts.find(contact => contact.id === id);
-                return user ? user.name : '';
-              }).join(', ')} is typing...
+              {Object.keys(typingUsers)
+                .filter(id => typingUsers[id])
+                .map(id => {
+                  const user = contacts.find(contact => contact.id === id);
+                  return user ? user.name : '';
+                })
+                .join(', ')}{' '}
+              is typing...
             </div>
           )}
-          <div className="flex">
+          <div className="flex space-x-2">
             <input
               type="text"
-              className="flex-1 p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Type a message..."
               value={newMessage}
               onChange={(e) => {
@@ -476,34 +573,43 @@ const SphereConnect = () => {
               }}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
             />
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={sendMessage}
-              className="px-4 py-2 bg-indigo-500 text-white rounded-r-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+              className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
             >
               <Send size={20} />
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
 
       {/* Right Sidebar */}
       <motion.div
-        className={`bg-white p-4 border-l border-gray-200 ${isRightSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out`}
+        className={`bg-white p-6 border-l border-gray-200 ${
+          isRightSidebarOpen ? 'w-72' : 'w-20'
+        } transition-all duration-300 ease-in-out shadow-lg`}
         initial={false}
-        animate={{ width: isRightSidebarOpen ? 256 : 64 }}
+        animate={{ width: isRightSidebarOpen ? 288 : 80 }}
       >
-        <div className="flex items-center justify-between mb-4">
-          {isRightSidebarOpen && <h2 className="text-xl font-bold">Contacts</h2>}
-          <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className="p-2 rounded hover:bg-gray-200">
-            {isRightSidebarOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          </button>
+        <div className="flex items-center justify-between mb-6">
+          {isRightSidebarOpen && <h2 className="text-2xl font-bold text-indigo-800">Contacts</h2>}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+            className="p-2 rounded hover:bg-gray-200 transition-colors duration-200"
+          >
+            {isRightSidebarOpen ? <ChevronRight size={24} /> : <ChevronLeft size={24} />}
+          </motion.button>
         </div>
         {isRightSidebarOpen && (
           <>
             <div className="relative mb-4">
               <input
                 type="text"
-                className="w-full p-2 pr-8 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full p-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="Search contacts..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -518,16 +624,16 @@ const SphereConnect = () => {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer transition-colors duration-200"
+                    className="flex items-center p-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors duration-200"
                     onClick={() => handleContactClick(contact)}
                   >
                     <img
                       src={contact.profile_picture || 'https://via.placeholder.com/40'}
                       alt={contact.name || 'Contact'}
-                      className="w-8 h-8 rounded-full mr-2"
+                      className="w-10 h-10 rounded-full mr-3 object-cover"
                     />
                     <div>
-                      <p className="font-semibold">{contact.name || 'Unknown'}</p>
+                      <p className="font-semibold text-indigo-800">{contact.name || 'Unknown'}</p>
                       <p className="text-sm text-gray-500">{contact.email || 'No email'}</p>
                     </div>
                   </motion.li>
@@ -546,18 +652,20 @@ const SphereConnect = () => {
       >
         <input
           type="text"
-          className="w-full p-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full p-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="Channel name"
           value={newChannelName}
           onChange={(e) => setNewChannelName(e.target.value)}
         />
         <div className="flex justify-end">
-          <button
-            className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-200"
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors duration-200"
             onClick={createChannel}
           >
             Create
-          </button>
+          </motion.button>
         </div>
       </Modal>
 
@@ -572,50 +680,41 @@ const SphereConnect = () => {
             <img
               src={selectedUser.profile_picture || 'https://via.placeholder.com/100'}
               alt={selectedUser.name}
-              className="w-24 h-24 rounded-full mx-auto mb-4"
+              className="w-24 h-24 rounded-full mx-auto mb-4 object-cover"
             />
-            <h3 className="text-xl font-bold mb-2">{selectedUser.name}</h3>
+            <h3 className="text-xl font-bold mb-2 text-indigo-800">{selectedUser.name}</h3>
             <p className="text-gray-600 mb-4">{selectedUser.email}</p>
-            <button
-              className="w-full px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-200 mb-2"
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-full px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors duration-200 mb-2"
               onClick={startChat}
             >
               Start Chat
-            </button>
+            </motion.button>
             {selectedChannel && (
-              <button
-                className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-200"
-                onClick={() => addUserToChannel(selectedUser.id)}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200"
+                onClick={() => handleAddMember(selectedUser.email)}
               >
                 Add to Channel
-              </button>
+              </motion.button>
             )}
           </div>
         )}
       </Modal>
 
-      {/* Channel Members Modal */}
-      <Modal
-        isOpen={!!selectedChannel}
-        onClose={() => setSelectedChannel(null)}
-        title={`${selectedChannel?.name} Members`}
-      >
-        {selectedChannel && (
-          <ul className="space-y-2">
-            {selectedChannel.members.map(member => (
-              <li key={member.id} className="flex items-center justify-between">
-                <span>{member.name}</span>
-                <button
-                  className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-200"
-                  onClick={() => removeUserFromChannel(member.id)}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Modal>
+      {/* Channel Settings Modal */}
+      {isChannelSettingsOpen && selectedChannel && (
+        <ChannelSettings
+          channel={selectedChannel}
+          onClose={() => setIsChannelSettingsOpen(false)}
+          onAddMember={handleAddMember}
+          onRemoveMember={handleRemoveMember}
+        />
+      )}
     </div>
   );
 };
