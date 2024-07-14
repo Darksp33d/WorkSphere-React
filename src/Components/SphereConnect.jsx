@@ -103,8 +103,9 @@ const SphereConnect = () => {
   }, [searchTerm, contacts]);
 
   useEffect(() => {
+    let source;
     if (selectedChannel || selectedContact) {
-        const source = new EventSource(`${API_URL}/api/events/?channel=${selectedChannel?.id || ''}&contact=${selectedContact?.id || ''}`);
+        source = new EventSource(`${API_URL}/api/events/?channel=${selectedChannel?.id || ''}&contact=${selectedContact?.id || ''}`, { withCredentials: true });
         
         source.onmessage = (event) => {
             const data = JSON.parse(event.data);
@@ -118,12 +119,23 @@ const SphereConnect = () => {
             }
         };
 
-        setEventSource(source);
-
-        return () => {
+        source.onerror = (error) => {
+            console.error('EventSource failed:', error);
             source.close();
+            // Attempt to reconnect after a delay
+            setTimeout(() => {
+                setEventSource(null);
+            }, 5000);
         };
+
+        setEventSource(source);
     }
+
+    return () => {
+        if (source) {
+            source.close();
+        }
+    };
 }, [selectedChannel, selectedContact]);
 
   const scrollToBottom = () => {
