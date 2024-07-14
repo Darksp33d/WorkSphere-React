@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../Contexts/AuthContext';
 import { Send, Users, Hash, Plus, Search, X, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { debounce } from 'lodash';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -34,11 +35,6 @@ const Modal = ({ isOpen, onClose, title, children }) => (
 const SphereConnect = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-    }
-  }, [user, navigate]);
   const [messages, setMessages] = useState([]);
   const [channels, setChannels] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -57,9 +53,17 @@ const SphereConnect = () => {
   const [privateChats, setPrivateChats] = useState([]);
   const [userCardOpen, setUserCardOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [csrfToken, setCsrfToken] = useState('');
+  const [typingUsers, setTypingUsers] = useState({});
+  const [eventSource, setEventSource] = useState(null);
   const messagesEndRef = useRef(null);
   const location = useLocation();
-  const [csrfToken, setCsrfToken] = useState('');
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     fetchChannels();
@@ -98,6 +102,30 @@ const SphereConnect = () => {
     );
   }, [searchTerm, contacts]);
 
+  useEffect(() => {
+    if (selectedChannel || selectedContact) {
+      const source = new EventSource(`${API_URL}/api/events/?channel=${selectedChannel?.id || ''}&contact=${selectedContact?.id || ''}`);
+      
+      source.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'new_message') {
+          setMessages((prevMessages) => [...prevMessages, data.message]);
+        } else if (data.type === 'typing_status') {
+          setTypingUsers((prevTypingUsers) => ({
+            ...prevTypingUsers,
+            [data.user_id]: data.is_typing,
+          }));
+        }
+      };
+
+      setEventSource(source);
+
+      return () => {
+        source.close();
+      };
+    }
+  }, [selectedChannel, selectedContact]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -119,7 +147,6 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-groups/`, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched channels:', data);
       setChannels(data.groups || []);
     } catch (error) {
       console.error('Error fetching channels:', error);
@@ -133,7 +160,6 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-contacts/`, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched contacts:', data);
       setContacts(data.contacts || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
@@ -147,7 +173,6 @@ const SphereConnect = () => {
     try {
       const response = await fetch(`${API_URL}/api/get-private-chats/`, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched private chats:', data);
       setPrivateChats(data.private_chats || []);
     } catch (error) {
       console.error('Error fetching private chats:', error);
@@ -167,7 +192,6 @@ const SphereConnect = () => {
 
       const response = await fetch(endpoint, { credentials: 'include' });
       const data = await response.json();
-      console.log('Fetched messages:', data);
       setMessages(data.messages || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -244,6 +268,75 @@ const SphereConnect = () => {
     setUserCardOpen(false);
   };
 
+  const addUserToChannel = async (userId) => {
+    if (!selectedChannel) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/add-user-to-channel/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ group_id: selectedChannel.id, user_id: userId }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        fetchChannels();
+      } else {
+        console.error('Error adding user to channel:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error adding user to channel:', error);
+    }
+  };
+
+  const removeUserFromChannel = async (userId) => {
+    if (!selectedChannel) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/remove-user-from-channel/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ group_id: selectedChannel.id, user_id: userId }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        fetchChannels();
+      } else {
+        console.error('Error removing user from channel:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error removing user from channel:', error);
+    }
+  };
+
+  const handleTyping = useCallback(
+    debounce(() => {
+      if (selectedChannel || selectedContact) {
+        fetch(`${API_URL}/api/user-typing/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+          },
+          body: JSON.stringify({
+            channel_id: selectedChannel?.id,
+            contact_id: selectedContact?.id,
+            is_typing: true,
+          }),
+          credentials: 'include',
+        });
+      }
+    }, 300),
+    [selectedChannel, selectedContact, csrfToken]
+  );
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Left Sidebar */}
@@ -308,8 +401,8 @@ const SphereConnect = () => {
         )}
       </motion.div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+{/* Main Chat Area */}
+<div className="flex-1 flex flex-col">
         <div className="bg-white p-4 border-b border-gray-200">
           <h1 className="text-2xl font-bold">
             {selectedChannel ? `#${selectedChannel.name}` : (selectedContact ? `${selectedContact.name}` : 'Select a channel or contact')}
@@ -351,13 +444,24 @@ const SphereConnect = () => {
           <div ref={messagesEndRef} />
         </div>
         <div className="bg-white p-4 border-t border-gray-200">
+          {Object.values(typingUsers).some(Boolean) && (
+            <div className="text-sm text-gray-500 italic mb-2">
+              {Object.keys(typingUsers).filter(id => typingUsers[id]).map(id => {
+                const user = contacts.find(contact => contact.id === id);
+                return user ? user.name : '';
+              }).join(', ')} is typing...
+            </div>
+          )}
           <div className="flex">
             <input
               type="text"
               className="flex-1 p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Type a message..."
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                handleTyping();
+              }}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
             />
             <button
@@ -461,12 +565,43 @@ const SphereConnect = () => {
             <h3 className="text-xl font-bold mb-2">{selectedUser.name}</h3>
             <p className="text-gray-600 mb-4">{selectedUser.email}</p>
             <button
-              className="w-full px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-200"
+              className="w-full px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-200 mb-2"
               onClick={startChat}
             >
               Start Chat
             </button>
+            {selectedChannel && (
+              <button
+                className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-200"
+                onClick={() => addUserToChannel(selectedUser.id)}
+              >
+                Add to Channel
+              </button>
+            )}
           </div>
+        )}
+      </Modal>
+
+      {/* Channel Members Modal */}
+      <Modal
+        isOpen={!!selectedChannel}
+        onClose={() => setSelectedChannel(null)}
+        title={`${selectedChannel?.name} Members`}
+      >
+        {selectedChannel && (
+          <ul className="space-y-2">
+            {selectedChannel.members.map(member => (
+              <li key={member.id} className="flex items-center justify-between">
+                <span>{member.name}</span>
+                <button
+                  className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-200"
+                  onClick={() => removeUserFromChannel(member.id)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </Modal>
     </div>
