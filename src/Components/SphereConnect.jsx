@@ -278,15 +278,25 @@ const SphereConnect = () => {
 
   const sendMessage = async () => {
     if (!newMessage.trim() || (!selectedChannel && !selectedContact)) return;
-
+  
     const endpoint = selectedChannel
       ? `${API_URL}/api/send-group-message/`
       : `${API_URL}/api/send-private-message/`;
-
+  
     const body = selectedChannel
       ? { group_id: selectedChannel.id, content: newMessage }
       : { recipient_id: selectedContact.id, content: newMessage };
-
+  
+    const optimisticMessage = {
+      id: Date.now(),
+      sender: user.first_name,
+      content: newMessage,
+      timestamp: new Date().toISOString(),
+    };
+  
+    setMessages(prevMessages => [...prevMessages, optimisticMessage]);
+    setNewMessage('');
+  
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -297,18 +307,17 @@ const SphereConnect = () => {
         body: JSON.stringify(body),
         credentials: 'include',
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setNewMessage('');
-      } else {
+  
+      if (!response.ok) {
         console.error('Error sending message:', await response.text());
+        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== optimisticMessage.id));
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== optimisticMessage.id));
     }
   };
-
+  
   const createChannel = async () => {
     try {
       const response = await fetch(`${API_URL}/api/create-group/`, {
@@ -395,7 +404,7 @@ const SphereConnect = () => {
 
   const handleTyping = useCallback(
     debounce(() => {
-      if ((selectedChannel || selectedContact) && newMessage.trim()) {
+      if (selectedChannel || selectedContact) {
         fetch(`${API_URL}/api/user-typing/`, {
           method: 'POST',
           headers: {
@@ -405,7 +414,7 @@ const SphereConnect = () => {
           body: JSON.stringify({
             channel_id: selectedChannel?.id,
             contact_id: selectedContact?.id,
-            is_typing: true,
+            is_typing: newMessage.trim().length > 0,
           }),
           credentials: 'include',
         });
@@ -461,8 +470,8 @@ const SphereConnect = () => {
                     key={typeof chat === 'object' ? chat.id : chat}
                     whileHover={{ x: 5 }}
                     className={`cursor-pointer p-2 rounded ${selectedContact?.email === (typeof chat === 'object' ? chat.email : chat)
-                        ? 'bg-indigo-500'
-                        : 'hover:bg-indigo-700'
+                      ? 'bg-indigo-500'
+                      : 'hover:bg-indigo-700'
                       } transition-colors duration-200`}
                     onClick={() => {
                       const contact = contacts.find(c => c.email === (typeof chat === 'object' ? chat.email : chat));
@@ -526,8 +535,8 @@ const SphereConnect = () => {
                   >
                     <div
                       className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg shadow-md ${message.sender === user.first_name
-                          ? 'bg-indigo-100 text-indigo-800'
-                          : 'bg-gray-100 text-gray-800'
+                        ? 'bg-indigo-100 text-indigo-800'
+                        : 'bg-gray-100 text-gray-800'
                         }`}
                     >
                       <p className="font-semibold text-sm">{message.sender}</p>
@@ -547,9 +556,9 @@ const SphereConnect = () => {
           {Object.values(typingUsers).some(Boolean) && (
             <div className="text-sm text-gray-500 italic mb-2">
               {Object.entries(typingUsers)
-                .filter(([id, isTyping]) => isTyping && id !== user.id)
+                .filter(([id, isTyping]) => isTyping && id !== user.id.toString())
                 .map(([id]) => {
-                  const typingUser = contacts.find(contact => contact.id === parseInt(id));
+                  const typingUser = contacts.find(contact => contact.id.toString() === id);
                   return typingUser ? typingUser.name : '';
                 })
                 .join(', ')} {Object.values(typingUsers).filter(Boolean).length > 0 ? 'is typing...' : ''}
