@@ -147,7 +147,7 @@ const SphereConnect = () => {
         socket.close();
       }
     };
-  }, [selectedChannel, selectedContact]);
+  }, [selectedChannel, selectedContact, connectWebSocket]);
 
   useEffect(() => {
     scrollToBottom();
@@ -173,37 +173,38 @@ const SphereConnect = () => {
     if (socket) {
       socket.close();
     }
-
+  
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const newSocket = new WebSocket(`${wsProtocol}//${API_URL.replace(/^https?:\/\//, '')}/ws/chat/${selectedChannel?.id || selectedContact?.id}/`);
-
+  
     newSocket.onopen = () => {
       console.log('WebSocket connected');
     };
-
+  
     newSocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log('Received WebSocket message:', data);
       if (data.type === 'chat.message') {
         setMessages((prevMessages) => [...prevMessages, data.message]);
         scrollToBottom();
       } else if (data.type === 'typing.status') {
         setTypingUsers((prevTypingUsers) => ({
           ...prevTypingUsers,
-          [data.channel_id]: data.is_typing,
+          [data.channel_id || data.contact_id]: data.is_typing,
         }));
       }
     };
-
+  
     newSocket.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
-
+  
     newSocket.onclose = () => {
       console.log('WebSocket disconnected');
       // Attempt to reconnect after a delay
       setTimeout(connectWebSocket, 5000);
     };
-
+  
     setSocket(newSocket);
   }, [selectedChannel, selectedContact, API_URL]);
 
@@ -318,9 +319,6 @@ const SphereConnect = () => {
   
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify(messageData));
-      // Optimistically add the message to the local state
-      setMessages((prevMessages) => [...prevMessages, messageData.message]);
-      scrollToBottom();
     } else {
       console.error('WebSocket is not connected');
     }
