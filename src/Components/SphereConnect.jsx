@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../Contexts/AuthContext';
 import { Send, Users, Hash, Plus, Search, X, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight, Settings, UserPlus, UserMinus } from 'lucide-react';
@@ -81,6 +81,7 @@ const ChannelSettings = ({ channel, onClose, onAddMember, onRemoveMember }) => {
 
 const SphereConnect = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [channels, setChannels] = useState([]);
@@ -88,7 +89,6 @@ const SphereConnect = () => {
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredContacts, setFilteredContacts] = useState([]);
   const [isChannelsOpen, setIsChannelsOpen] = useState(true);
   const [isContactsOpen, setIsContactsOpen] = useState(true);
   const [isNewChannelModalOpen, setIsNewChannelModalOpen] = useState(false);
@@ -102,10 +102,16 @@ const SphereConnect = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [csrfToken, setCsrfToken] = useState('');
   const [typingUsers, setTypingUsers] = useState({});
-  const [eventSource, setEventSource] = useState(null);
+  const [socket, setSocket] = useState(null);
   const [isChannelSettingsOpen, setIsChannelSettingsOpen] = useState(false);
   const messagesEndRef = useRef(null);
-  const location = useLocation();
+
+  const filteredContacts = useMemo(() => {
+    return contacts.filter(contact =>
+      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [contacts, searchTerm]);
 
   useEffect(() => {
     if (!user) {
@@ -134,61 +140,58 @@ const SphereConnect = () => {
   useEffect(() => {
     if (selectedChannel || selectedContact) {
       fetchMessages();
+      connectWebSocket();
     }
+    return () => {
+      if (socket) {
+        socket.close();
+      }
+    };
   }, [selectedChannel, selectedContact]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    setFilteredContacts(
-      contacts.filter(contact =>
-        contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.email.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
-  }, [searchTerm, contacts]);
-
-  useEffect(() => {
-    let source;
-    if (selectedChannel || selectedContact) {
-      source = new EventSource(`${API_URL}/api/events/?channel=${selectedChannel?.id || ''}&contact=${selectedContact?.id || ''}`, { withCredentials: true });
-
-      source.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'new_message') {
-          setMessages((prevMessages) => [...prevMessages, data.message]);
-        } else if (data.type === 'typing_status') {
-          setTypingUsers((prevTypingUsers) => ({
-            ...prevTypingUsers,
-            [data.user_id]: data.is_typing,
-          }));
-        }
-      };
-
-      source.onerror = (error) => {
-        console.error('EventSource failed:', error);
-        source.close();
-        // Attempt to reconnect after a delay
-        setTimeout(() => {
-          setEventSource(null);
-        }, 5000);
-      };
-
-      setEventSource(source);
-    }
-
-    return () => {
-      if (source) {
-        source.close();
-      }
-    };
-  }, [selectedChannel, selectedContact]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const connectWebSocket = useCallback(() => {
+    if (socket) {
+      socket.close();
+    }
+
+    const newSocket = new WebSocket(`${API_URL.replace('http', 'ws')}/ws/chat/${selectedChannel?.id || selectedContact?.id}/`);
+
+    newSocket.onopen = () => {
+      console.log('WebSocket connected');
+    };
+
+    newSocket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'chat.message') {
+        setMessages((prevMessages) => [...prevMessages, data.message]);
+      } else if (data.type === 'typing.status') {
+        setTypingUsers((prevTypingUsers) => ({
+          ...prevTypingUsers,
+          [data.user_id]: data.is_typing,
+        }));
+      }
+    };
+
+    newSocket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    newSocket.onclose = () => {
+      console.log('WebSocket disconnected');
+      // Attempt to reconnect after a delay
+      setTimeout(connectWebSocket, 5000);
+    };
+
+    setSocket(newSocket);
+  }, [selectedChannel, selectedContact, API_URL]);
 
   const fetchCsrfToken = async () => {
     try {
@@ -317,7 +320,7 @@ const SphereConnect = () => {
       setMessages(prevMessages => prevMessages.filter(msg => msg.id !== optimisticMessage.id));
     }
   };
-  
+
   const createChannel = async () => {
     try {
       const response = await fetch(`${API_URL}/api/create-group/`, {
@@ -405,22 +408,17 @@ const SphereConnect = () => {
   const handleTyping = useCallback(
     debounce(() => {
       if (selectedChannel || selectedContact) {
-        fetch(`${API_URL}/api/user-typing/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-          },
-          body: JSON.stringify({
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'typing.status',
             channel_id: selectedChannel?.id,
             contact_id: selectedContact?.id,
             is_typing: newMessage.trim().length > 0,
-          }),
-          credentials: 'include',
-        });
+          }));
+        }
       }
     }, 300),
-    [selectedChannel, selectedContact, csrfToken, newMessage]
+    [selectedChannel, selectedContact, socket, newMessage]
   );
 
   return (
@@ -467,20 +465,19 @@ const SphereConnect = () => {
               <ul className="space-y-2">
                 {privateChats.map(chat => (
                   <motion.li
-                    key={typeof chat === 'object' ? chat.id : chat}
+                    key={chat.id}
                     whileHover={{ x: 5 }}
-                    className={`cursor-pointer p-2 rounded ${selectedContact?.email === (typeof chat === 'object' ? chat.email : chat)
+                    className={`cursor-pointer p-2 rounded ${selectedContact?.id === chat.id
                       ? 'bg-indigo-500'
                       : 'hover:bg-indigo-700'
                       } transition-colors duration-200`}
                     onClick={() => {
-                      const contact = contacts.find(c => c.email === (typeof chat === 'object' ? chat.email : chat));
-                      setSelectedContact(contact || {});
+                      setSelectedContact(chat);
                       setSelectedChannel(null);
                     }}
                   >
                     <MessageSquare className="inline-block mr-2" size={16} />
-                    {typeof chat === 'object' ? chat.email : chat}
+                    {chat.name}
                   </motion.li>
                 ))}
               </ul>
@@ -631,12 +628,12 @@ const SphereConnect = () => {
                   >
                     <img
                       src={contact.profile_picture || 'https://via.placeholder.com/40'}
-                      alt={contact.name || 'Contact'}
+                      alt={contact.name}
                       className="w-10 h-10 rounded-full mr-3 object-cover"
                     />
                     <div>
-                      <p className="font-semibold text-indigo-800">{contact.name || 'Unknown'}</p>
-                      <p className="text-sm text-gray-500">{contact.email || 'No email'}</p>
+                      <p className="font-semibold text-indigo-800">{contact.name}</p>
+                      <p className="text-sm text-gray-500">{contact.email}</p>
                     </div>
                   </motion.li>
                 ))}
