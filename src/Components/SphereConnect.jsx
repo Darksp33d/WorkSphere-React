@@ -182,7 +182,6 @@ const SphereConnect = () => {
     };
 
     newSocket.onmessage = (event) => {
-      console.log('Received message:', event.data);
       const data = JSON.parse(event.data);
       if (data.type === 'chat.message') {
         setMessages((prevMessages) => [...prevMessages, data.message]);
@@ -531,7 +530,7 @@ const SphereConnect = () => {
               <AnimatePresence>
                 {messages.map(message => (
                   <motion.div
-                    key={message.id || message.timestamp} // Use timestamp as fallback if id is not available
+                    key={message.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
@@ -539,11 +538,10 @@ const SphereConnect = () => {
                     className={`flex ${message.sender === user.first_name ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg shadow-md ${
-                        message.sender === user.first_name
-                          ? 'bg-indigo-100 text-indigo-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
+                      className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg shadow-md ${message.sender === user.first_name
+                        ? 'bg-indigo-100 text-indigo-800'
+                        : 'bg-gray-100 text-gray-800'
+                        }`}
                     >
                       <p className="font-semibold text-sm">{message.sender}</p>
                       <p className="mt-1">{message.content}</p>
