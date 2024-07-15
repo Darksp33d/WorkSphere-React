@@ -172,6 +172,7 @@ const SphereConnect = () => {
       const data = JSON.parse(event.data);
       if (data.type === 'chat.message') {
         setMessages((prevMessages) => [...prevMessages, data.message]);
+        scrollToBottom();
       } else if (data.type === 'typing.status') {
         setTypingUsers((prevTypingUsers) => ({
           ...prevTypingUsers,
@@ -282,43 +283,28 @@ const SphereConnect = () => {
   const sendMessage = async () => {
     if (!newMessage.trim() || (!selectedChannel && !selectedContact)) return;
   
-    const endpoint = selectedChannel
-      ? `${API_URL}/api/send-group-message/`
-      : `${API_URL}/api/send-private-message/`;
-  
-    const body = selectedChannel
-      ? { group_id: selectedChannel.id, content: newMessage }
-      : { recipient_id: selectedContact.id, content: newMessage };
-  
-    const optimisticMessage = {
-      id: Date.now(),
-      sender: user.first_name,
-      content: newMessage,
-      timestamp: new Date().toISOString(),
+    const messageData = {
+      type: 'chat.message',
+      message: {
+        content: newMessage,
+        sender: user.first_name,
+        timestamp: new Date().toISOString(),
+      },
     };
   
-    setMessages(prevMessages => [...prevMessages, optimisticMessage]);
-    setNewMessage('');
-  
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-        },
-        body: JSON.stringify(body),
-        credentials: 'include',
-      });
-  
-      if (!response.ok) {
-        console.error('Error sending message:', await response.text());
-        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== optimisticMessage.id));
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== optimisticMessage.id));
+    if (selectedChannel) {
+      messageData.group_id = selectedChannel.id;
+    } else if (selectedContact) {
+      messageData.recipient_id = selectedContact.id;
     }
+  
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(messageData));
+    } else {
+      console.error('WebSocket is not connected');
+    }
+  
+    setNewMessage('');
   };
 
   const createChannel = async () => {
