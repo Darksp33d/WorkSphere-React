@@ -162,7 +162,8 @@ const SphereConnect = () => {
       socket.close();
     }
 
-    const newSocket = new WebSocket(`${API_URL.replace('http', 'ws')}/ws/chat/${selectedChannel?.id || selectedContact?.id}/`);
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const newSocket = new WebSocket(`${wsProtocol}//${API_URL.replace(/^https?:\/\//, '')}/ws/chat/${selectedChannel?.id || selectedContact?.id}/`);
 
     newSocket.onopen = () => {
       console.log('WebSocket connected');
@@ -408,7 +409,7 @@ const SphereConnect = () => {
   );
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-indigo-100 to-purple-100">
+<div className="flex h-screen bg-gradient-to-br from-indigo-100 to-purple-100">
       {/* Left Sidebar */}
       <motion.div
         className={`bg-gradient-to-b from-indigo-600 to-indigo-800 text-white p-6 ${isLeftSidebarOpen ? 'w-72' : 'w-20'
