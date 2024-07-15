@@ -153,6 +153,18 @@ const SphereConnect = () => {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    if (socket) {
+      const handleBeforeUnload = () => {
+        socket.close();
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [socket]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -177,7 +189,7 @@ const SphereConnect = () => {
       } else if (data.type === 'typing.status') {
         setTypingUsers((prevTypingUsers) => ({
           ...prevTypingUsers,
-          [data.user_id]: data.is_typing,
+          [data.channel_id]: data.is_typing,
         }));
       }
     };
@@ -270,7 +282,12 @@ const SphereConnect = () => {
       const response = await fetch(endpoint, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages || []);
+        setMessages(data.messages.map(message => ({
+          id: message.id,
+          content: message.content,
+          sender: message.sender,
+          timestamp: message.timestamp,
+        })) || []);
       } else {
         console.error('Error fetching messages:', await response.text());
       }
@@ -301,6 +318,9 @@ const SphereConnect = () => {
   
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify(messageData));
+      // Optimistically add the message to the local state
+      setMessages((prevMessages) => [...prevMessages, messageData.message]);
+      scrollToBottom();
     } else {
       console.error('WebSocket is not connected');
     }
@@ -409,7 +429,7 @@ const SphereConnect = () => {
   );
 
   return (
-<div className="flex h-screen bg-gradient-to-br from-indigo-100 to-purple-100">
+    <div className="flex h-screen bg-gradient-to-br from-indigo-100 to-purple-100">
       {/* Left Sidebar */}
       <motion.div
         className={`bg-gradient-to-b from-indigo-600 to-indigo-800 text-white p-6 ${isLeftSidebarOpen ? 'w-72' : 'w-20'
@@ -537,17 +557,13 @@ const SphereConnect = () => {
           <div ref={messagesEndRef} />
         </div>
         <div className="bg-white p-4 border-t border-gray-200">
-          {Object.values(typingUsers).some(Boolean) && (
-            <div className="text-sm text-gray-500 italic mb-2">
-              {Object.entries(typingUsers)
-                .filter(([id, isTyping]) => isTyping && id !== user.id.toString())
-                .map(([id]) => {
-                  const typingUser = contacts.find(contact => contact.id.toString() === id);
-                  return typingUser ? typingUser.name : '';
-                })
-                .join(', ')} {Object.values(typingUsers).filter(Boolean).length > 0 ? 'is typing...' : ''}
-            </div>
-          )}
+          {Object.entries(typingUsers)
+            .filter(([id, isTyping]) => isTyping && id !== selectedChannel?.id.toString())
+            .map(([id]) => {
+              const typingUser = channels.find(channel => channel.id.toString() === id);
+              return typingUser ? typingUser.name : '';
+            })
+            .join(', ')} {Object.values(typingUsers).filter(Boolean).length > 0 ? 'is typing...' : ''}
           <div className="flex space-x-2">
             <input
               type="text"
