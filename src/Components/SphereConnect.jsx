@@ -7,6 +7,14 @@ import { debounce } from 'lodash';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
+const createWebSocket = (url, onMessage, onError, onClose) => {
+  const socket = new WebSocket(url);
+  socket.onmessage = onMessage;
+  socket.onerror = onError;
+  socket.onclose = onClose;
+  return socket;
+};
+
 const Modal = ({ isOpen, onClose, title, children }) => (
   <AnimatePresence>
     {isOpen && (
@@ -173,40 +181,49 @@ const SphereConnect = () => {
     if (socket) {
       socket.close();
     }
-  
+
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const newSocket = new WebSocket(`${wsProtocol}//${API_URL.replace(/^https?:\/\//, '')}/ws/chat/${selectedChannel?.id || selectedContact?.id}/`);
-  
-    newSocket.onopen = () => {
-      console.log('WebSocket connected');
-    };
-  
-    newSocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log('Received WebSocket message:', data);
-      if (data.type === 'chat.message') {
-        setMessages((prevMessages) => [...prevMessages, data.message]);
-        scrollToBottom();
-      } else if (data.type === 'typing.status') {
-        setTypingUsers((prevTypingUsers) => ({
-          ...prevTypingUsers,
-          [data.channel_id || data.contact_id]: data.is_typing,
-        }));
+    const wsUrl = `${wsProtocol}//${API_URL.replace(/^https?:\/\//, '')}/ws/chat/${selectedChannel?.id || selectedContact?.id}/`;
+
+    const newSocket = createWebSocket(
+      wsUrl,
+      (event) => {
+        const data = JSON.parse(event.data);
+        console.log('Received WebSocket message:', data);
+        if (data.type === 'chat.message') {
+          setMessages((prevMessages) => [...prevMessages, data.message]);
+          scrollToBottom();
+        } else if (data.type === 'typing.status') {
+          setTypingUsers((prevTypingUsers) => ({
+            ...prevTypingUsers,
+            [data.channel_id || data.contact_id]: data.is_typing,
+          }));
+        }
+      },
+      (error) => {
+        console.error('WebSocket error:', error);
+      },
+      () => {
+        console.log('WebSocket disconnected');
+        setTimeout(connectWebSocket, 5000);
+      }
+    );
+
+    setSocket(newSocket);
+  }, [selectedChannel, selectedContact, API_URL, scrollToBottom]);
+
+  useEffect(() => {
+    if (selectedChannel || selectedContact) {
+      fetchMessages();
+      connectWebSocket();
+    }
+    return () => {
+      if (socket) {
+        socket.close();
       }
     };
-  
-    newSocket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-  
-    newSocket.onclose = () => {
-      console.log('WebSocket disconnected');
-      // Attempt to reconnect after a delay
-      setTimeout(connectWebSocket, 5000);
-    };
-  
-    setSocket(newSocket);
-  }, [selectedChannel, selectedContact, API_URL]);
+  }, [selectedChannel, selectedContact, connectWebSocket, fetchMessages, socket]);
+
 
   const fetchCsrfToken = async () => {
     try {
