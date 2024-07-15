@@ -7,14 +7,6 @@ import { debounce } from 'lodash';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const createWebSocket = (url, onMessage, onError, onClose) => {
-  const socket = new WebSocket(url);
-  socket.onmessage = onMessage;
-  socket.onerror = onError;
-  socket.onclose = onClose;
-  return socket;
-};
-
 const Modal = ({ isOpen, onClose, title, children }) => (
   <AnimatePresence>
     {isOpen && (
@@ -155,7 +147,7 @@ const SphereConnect = () => {
         socket.close();
       }
     };
-  }, [selectedChannel, selectedContact, connectWebSocket]);
+  }, [selectedChannel, selectedContact]);
 
   useEffect(() => {
     scrollToBottom();
@@ -183,47 +175,38 @@ const SphereConnect = () => {
     }
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${API_URL.replace(/^https?:\/\//, '')}/ws/chat/${selectedChannel?.id || selectedContact?.id}/`;
+    const newSocket = new WebSocket(`${wsProtocol}//${API_URL.replace(/^https?:\/\//, '')}/ws/chat/${selectedChannel?.id || selectedContact?.id}/`);
 
-    const newSocket = createWebSocket(
-      wsUrl,
-      (event) => {
-        const data = JSON.parse(event.data);
-        console.log('Received WebSocket message:', data);
-        if (data.type === 'chat.message') {
-          setMessages((prevMessages) => [...prevMessages, data.message]);
-          scrollToBottom();
-        } else if (data.type === 'typing.status') {
-          setTypingUsers((prevTypingUsers) => ({
-            ...prevTypingUsers,
-            [data.channel_id || data.contact_id]: data.is_typing,
-          }));
-        }
-      },
-      (error) => {
-        console.error('WebSocket error:', error);
-      },
-      () => {
-        console.log('WebSocket disconnected');
-        setTimeout(connectWebSocket, 5000);
-      }
-    );
+    newSocket.onopen = () => {
+      console.log('WebSocket connected');
+    };
 
-    setSocket(newSocket);
-  }, [selectedChannel, selectedContact, API_URL, scrollToBottom]);
-
-  useEffect(() => {
-    if (selectedChannel || selectedContact) {
-      fetchMessages();
-      connectWebSocket();
-    }
-    return () => {
-      if (socket) {
-        socket.close();
+    newSocket.onmessage = (event) => {
+      console.log('Received message:', event.data);
+      const data = JSON.parse(event.data);
+      if (data.type === 'chat.message') {
+        setMessages((prevMessages) => [...prevMessages, data.message]);
+        scrollToBottom();
+      } else if (data.type === 'typing.status') {
+        setTypingUsers((prevTypingUsers) => ({
+          ...prevTypingUsers,
+          [data.channel_id]: data.is_typing,
+        }));
       }
     };
-  }, [selectedChannel, selectedContact, connectWebSocket, fetchMessages, socket]);
 
+    newSocket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    newSocket.onclose = () => {
+      console.log('WebSocket disconnected');
+      // Attempt to reconnect after a delay
+      setTimeout(connectWebSocket, 5000);
+    };
+
+    setSocket(newSocket);
+  }, [selectedChannel, selectedContact, API_URL]);
 
   const fetchCsrfToken = async () => {
     try {
@@ -336,6 +319,9 @@ const SphereConnect = () => {
   
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify(messageData));
+      // Optimistically add the message to the local state
+      setMessages((prevMessages) => [...prevMessages, messageData.message]);
+      scrollToBottom();
     } else {
       console.error('WebSocket is not connected');
     }
@@ -545,7 +531,7 @@ const SphereConnect = () => {
               <AnimatePresence>
                 {messages.map(message => (
                   <motion.div
-                    key={message.id}
+                    key={message.id || message.timestamp} // Use timestamp as fallback if id is not available
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
@@ -553,10 +539,11 @@ const SphereConnect = () => {
                     className={`flex ${message.sender === user.first_name ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg shadow-md ${message.sender === user.first_name
-                        ? 'bg-indigo-100 text-indigo-800'
-                        : 'bg-gray-100 text-gray-800'
-                        }`}
+                      className={`max-w-xs lg:max-w-md xl:max-w-lg p-3 rounded-lg shadow-md ${
+                        message.sender === user.first_name
+                          ? 'bg-indigo-100 text-indigo-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
                     >
                       <p className="font-semibold text-sm">{message.sender}</p>
                       <p className="mt-1">{message.content}</p>
