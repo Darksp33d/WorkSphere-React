@@ -4,7 +4,6 @@ import { useAuth } from '../Contexts/AuthContext';
 import { Send, Users, Hash, Plus, Search, X, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight, Settings, UserPlus, UserMinus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { debounce } from 'lodash';
-import useWebSocket from 'react-use-websocket';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -299,40 +298,7 @@ const SphereConnect = () => {
     }
   };
 
-  const { 
-    sendMessage, 
-    lastMessage, 
-    readyState 
-  } = useWebSocket(socketUrl, {
-    onOpen: () => console.log('WebSocket connected'),
-    onClose: () => console.log('WebSocket disconnected'),
-    shouldReconnect: (closeEvent) => true,
-  });
-
-  useEffect(() => {
-    if (selectedChannel || selectedContact) {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const newSocketUrl = `${wsProtocol}//${API_URL.replace(/^https?:\/\//, '')}/ws/chat/${selectedChannel?.id || selectedContact?.id}/`;
-      setSocketUrl(newSocketUrl);
-    }
-  }, [selectedChannel, selectedContact]);
-
-  useEffect(() => {
-    if (lastMessage !== null) {
-      const data = JSON.parse(lastMessage.data);
-      if (data.type === 'chat.message') {
-        setMessages((prevMessages) => [...prevMessages, data.message]);
-        scrollToBottom();
-      } else if (data.type === 'typing.status') {
-        setTypingUsers((prevTypingUsers) => ({
-          ...prevTypingUsers,
-          [data.channel_id]: data.is_typing,
-        }));
-      }
-    }
-  }, [lastMessage]);
-
-  const sendMessageHandler = () => {
+  const sendMessage = async () => {
     if (!newMessage.trim() || (!selectedChannel && !selectedContact)) return;
   
     const messageData = {
@@ -350,26 +316,116 @@ const SphereConnect = () => {
       messageData.recipient_id = selectedContact.id;
     }
   
-    sendMessage(JSON.stringify(messageData));
-    
-    // Optimistically add the message to the local state
-    setMessages((prevMessages) => [...prevMessages, messageData.message]);
-    scrollToBottom();
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(messageData));
+      // Optimistically add the message to the local state
+      setMessages((prevMessages) => [...prevMessages, messageData.message]);
+      scrollToBottom();
+    } else {
+      console.error('WebSocket is not connected');
+    }
+  
     setNewMessage('');
+  };
+
+  const createChannel = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/create-group/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ name: newChannelName }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        fetchChannels();
+        setIsNewChannelModalOpen(false);
+        setNewChannelName('');
+      } else {
+        console.error('Error creating channel:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error creating channel:', error);
+    }
+  };
+
+  const handleContactClick = (contact) => {
+    setSelectedUser(contact);
+    setUserCardOpen(true);
+  };
+
+  const startChat = () => {
+    setSelectedContact(selectedUser || {});
+    setSelectedChannel(null);
+    setUserCardOpen(false);
+  };
+
+  const handleChannelClick = (channel) => {
+    setSelectedChannel(channel);
+    setSelectedContact(null);
+  };
+
+  const handleAddMember = async (email) => {
+    try {
+      const response = await fetch(`${API_URL}/api/add-user-to-channel/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ group_id: selectedChannel.id, email }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        fetchChannels();
+      } else {
+        console.error('Error adding user to channel:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error adding user to channel:', error);
+    }
+  };
+
+  const handleRemoveMember = async (userId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/remove-user-from-channel/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ group_id: selectedChannel.id, user_id: userId }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        fetchChannels();
+      } else {
+        console.error('Error removing user from channel:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error removing user from channel:', error);
+    }
   };
 
   const handleTyping = useCallback(
     debounce(() => {
       if (selectedChannel || selectedContact) {
-        sendMessage(JSON.stringify({
-          type: 'typing.status',
-          channel_id: selectedChannel?.id,
-          contact_id: selectedContact?.id,
-          is_typing: newMessage.trim().length > 0,
-        }));
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'typing.status',
+            channel_id: selectedChannel?.id,
+            contact_id: selectedContact?.id,
+            is_typing: newMessage.trim().length > 0,
+          }));
+        }
       }
     }, 300),
-    [selectedChannel, selectedContact, newMessage, sendMessage]
+    [selectedChannel, selectedContact, socket, newMessage]
   );
 
   return (
